@@ -32,7 +32,7 @@ button,.btn{font:inherit;cursor:pointer;border-radius:8px;padding:8px 14px;borde
 button.primary,.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button:disabled{opacity:.5;cursor:not-allowed}
 button.ghost.light,.theme-toggle{background:transparent;color:var(--header-text);border-color:rgba(255,255,255,.35)}
-.theme-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0}
+.theme-toggle,.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0}
 button.small{padding:3px 9px;font-size:13px}.danger{color:var(--nogo);border-color:var(--nogo)}
 button.icon{border:0;background:none;font-size:24px;line-height:1;padding:0 6px;color:var(--muted)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;display:block;color:inherit;text-decoration:none;box-shadow:var(--shadow)}
