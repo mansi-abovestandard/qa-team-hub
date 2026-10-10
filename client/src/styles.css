@@ -897,8 +897,25 @@ tr.dim td {
   margin-top: 4px
 }
 
-.task-actions {
-  margin-top: 10px
+.row-actions {
+  flex-wrap: nowrap
+}
+
+.edit-all {
+  max-height: 60vh;
+  overflow: auto;
+  padding-right: 4px
+}
+
+.edit-all-row {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px
+}
+
+.edit-all-row .code {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  color: var(--muted)
 }
 
 .task-detail .more b {
@@ -1086,7 +1103,8 @@ hr {
     grid-template-columns: 32px minmax(0, 1fr)
   }
 
-  .task-row .status-btns {
+  .task-row .status-btns,
+  .task-row .row-actions {
     grid-column: 1 / -1;
     justify-content: flex-start
   }

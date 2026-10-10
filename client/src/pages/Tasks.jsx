@@ -19,7 +19,7 @@ export default function Tasks() {
   const st = useAsync(() => get(`/api/projects/${pid}/tasks`), [pid])
   const [q, setQ] = useState(''); const [area, setArea] = useState('')
   const [sectionKey, setSectionKey] = useState(''); const [openId, setOpenId] = useState(null)
-  const [edit, setEdit] = useState(null); const [imp, setImp] = useState(false)
+  const [edit, setEdit] = useState(null); const [editAll, setEditAll] = useState(false); const [imp, setImp] = useState(false)
   const pane = useRef(null)
   const tasks = st.data || []
   const areas = useMemo(() => [...new Set(tasks.map((t) => t.area))], [tasks])
@@ -34,6 +34,14 @@ export default function Tasks() {
   const remove = async (t) => {
     if (!window.confirm(`Remove "${t.title}" from the checklist?\nOld test rounds keep their copy.`)) return
     try { await del(`/api/tasks/${t.id}`); toast('Task removed', 'ok'); st.reload() } catch (x) { toast(x.message, 'error') }
+  }
+  const removeSection = async () => {
+    if (!current) return
+    if (!window.confirm(`Remove all ${current.items.length} tasks in "${current.group}"?\nOld test rounds keep their copy.`)) return
+    try {
+      for (const t of current.items) await del(`/api/tasks/${t.id}`)
+      toast(`${current.items.length} tasks removed`, 'ok'); st.reload()
+    } catch (x) { toast(x.message, 'error'); st.reload() }
   }
   return (
     <div>
@@ -73,6 +81,8 @@ export default function Tasks() {
             <div className="row between section-head">
               <div><h3>{current.group}</h3><div className="muted small">{current.area} · {current.items.length} tasks</div></div>
               <div className="row gap">
+                {canAdmin && <button className="ghost small" onClick={() => setEditAll(true)}>Edit all</button>}
+                {canAdmin && <button className="ghost small danger" onClick={removeSection}>Remove all</button>}
                 <button className="ghost small" disabled={index <= 0} onClick={() => pick(sections[index - 1].key)}>Previous</button>
                 <button className="ghost small" disabled={index >= sections.length - 1} onClick={() => pick(sections[index + 1].key)}>Next</button>
               </div>
@@ -86,6 +96,7 @@ export default function Tasks() {
         </div>
       )}
       {edit && <TaskModal pid={pid} task={edit} areas={areas} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); st.reload() }} />}
+      {editAll && current && <EditAllModal tasks={current.items} group={current.group} onClose={() => setEditAll(false)} onSaved={() => { setEditAll(false); st.reload() }} />}
       {imp && <ImportModal pid={pid} onClose={() => setImp(false)} onDone={() => { setImp(false); st.reload() }} />}
     </div>
   )
@@ -102,15 +113,56 @@ function TaskRow({ task, open, onToggle, canAdmin, onEdit, onRemove }) {
           <span className={`chip ${task.priority}`}>{task.priority}</span>
           {task.auto && <span className="chip auto">automatic</span>}
         </button>
+        {canAdmin && (
+          <div className="row gap row-actions">
+            <button type="button" className="ghost small" onClick={() => onEdit(task)}>Edit</button>
+            <button type="button" className="ghost small danger" onClick={() => onRemove(task)}>Remove</button>
+          </div>
+        )}
       </div>
       {open && (
         <div className="task-detail">
           <div className="more"><b>What to test: </b>{task.steps || <span>Not written yet</span>}</div>
           <div className="more"><b>Expected result: </b>{task.expected || <span>Not written yet</span>}</div>
-          {canAdmin && <div className="row gap task-actions"><button className="ghost small" onClick={() => onEdit(task)}>Edit</button><button className="ghost small danger" onClick={() => onRemove(task)}>Remove</button></div>}
         </div>
       )}
     </div>
+  )
+}
+
+function EditAllModal({ tasks, group, onClose, onSaved }) {
+  const toast = useToast()
+  const [rows, setRows] = useState(() => tasks.map((t) => ({ id: t.id, code: t.code, title: t.title, steps: t.steps || '', expected: t.expected || '', priority: t.priority, area: t.area, group: t.group })))
+  const set = (i, k) => (e) => setRows(rows.map((r, n) => (n === i ? { ...r, [k]: e.target.value } : r)))
+  const submit = async (e) => {
+    e.preventDefault()
+    try {
+      for (const r of rows) {
+        if (!r.title.trim()) throw new Error(`${r.code} needs a task name`)
+        await patch(`/api/tasks/${r.id}`, { title: r.title, steps: r.steps, expected: r.expected, priority: r.priority, area: r.area, group: r.group })
+      }
+      toast('Tasks saved', 'ok'); onSaved()
+    } catch (x) { toast(x.message, 'error') }
+  }
+  return (
+    <Modal title={`Edit all · ${group}`} onClose={onClose} wide>
+      <form onSubmit={submit}>
+        <p className="muted small">Edits every task in this page or module. Finished rounds keep their own copy.</p>
+        <div className="edit-all">
+          {rows.map((r, i) => (
+            <div key={r.id} className="edit-all-row">
+              <div className="code">{r.code}</div>
+              <Field label="Task"><input value={r.title} onChange={set(i, 'title')} required /></Field>
+              <div className="two">
+                <Field label="What to test"><textarea rows={2} value={r.steps} onChange={set(i, 'steps')} /></Field>
+                <Field label="Expected result"><textarea rows={2} value={r.expected} onChange={set(i, 'expected')} /></Field>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="actions"><button type="button" className="ghost" onClick={onClose}>Cancel</button><button className="primary">Save all</button></div>
+      </form>
+    </Modal>
   )
 }
 
