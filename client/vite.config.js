@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 const here = path.dirname(fileURLToPath(import.meta.url))
 export default defineConfig({
   root: here,
+  base: process.env.GITHUB_PAGES ? '/qa-team-hub/' : '/',
   plugins: [react()],
   build: { outDir: path.join(here, 'dist'), emptyOutDir: true },
   server: {
