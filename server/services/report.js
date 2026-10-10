@@ -13,7 +13,7 @@ export function computeStats(run, bugs, previousRun = null) {
   const counts = Object.fromEntries(STATUSES.map((s) => [s, 0]))
   const byArea = {}
   const byPriority = {}
-  const failed = [], blocked = [], untestedHigh = [], untestedAll = []
+  const failed = [], blocked = [], untestedHigh = [], untestedAll = [], checked = []
   for (const it of items) {
     const st = statusOf(it.id)
     counts[st]++
@@ -23,6 +23,7 @@ export function computeStats(run, bugs, previousRun = null) {
     p.total++; p[st]++
     const r = run.results[it.id] || {}
     const row = { ...it, status: st, notes: r.notes || '', tester: r.tester || '', source: r.source || '', bugIds: r.bugIds || [] }
+    if (st !== 'Not tested' || r.notes) checked.push(row)
     if (st === 'Fail') failed.push(row)
     if (st === 'Blocked') blocked.push(row)
     if (st === 'Not tested') { untestedAll.push(row); if (it.priority === 'high') untestedHigh.push(row) }
@@ -77,7 +78,7 @@ export function computeStats(run, bugs, previousRun = null) {
     if (untestedAll.length) reasons.push(`${untestedAll.length} lower-priority check(s) not tested`)
     if (openBugs.length) reasons.push(`${openBugs.length} open minor bug(s)`)
   }
-  return { total, applicable, tested, counts, passRate, progress, byArea, byPriority, failed, blocked, untestedHigh,
+  return { total, applicable, tested, counts, passRate, progress, byArea, byPriority, failed, blocked, checked, untestedHigh,
     untestedCount: untestedAll.length, issuesByGroup, openBugs, runBugs, regressions, fixedSince, verdict, verdictText, reasons }
 }
 
@@ -115,7 +116,11 @@ export function reportText(run, bugs, previousRun) {
   }
   if (s.openBugs.length) {
     L.push(''); L.push(`OPEN BUGS (${s.openBugs.length})`)
-    s.openBugs.slice(0, 20).forEach((b) => L.push(`  ${b.id} [${b.severity}] ${b.title} - ${b.status}${b.assignee ? ` - ${b.assignee}` : ''}${bugNotes(b) ? `\n      ${bugNotes(b).replace(/\s+/g, ' ').slice(0, 240)}` : ''}`))
+    s.openBugs.forEach((b) => L.push(`  ${b.id} [${b.severity}] ${b.title} - ${b.status}${b.itemId ? ` - ${b.itemId}` : ''}${b.assignee ? ` - ${b.assignee}` : ''}${bugNotes(b) ? `\n      ${bugNotes(b).replace(/\s+/g, ' ')}` : ''}`))
+  }
+  if (s.checked.length) {
+    L.push(''); L.push(`EVERY CHECKED TASK (${s.checked.length}) — pass, fail, blocked and n/a, with notes`)
+    s.checked.forEach((f) => L.push(`  ${f.status.toUpperCase().padEnd(14)} ${f.id} ${f.group} > ${f.title}${f.notes ? `\n      note: ${f.notes.replace(/\s+/g, ' ')}` : ''}${f.bugIds.length ? `\n      bugs: ${f.bugIds.join(', ')}` : ''}`))
   }
   if (s.untestedHigh.length) { L.push(''); L.push(`HIGH-PRIORITY NOT TESTED (${s.untestedHigh.length})`); s.untestedHigh.slice(0, 15).forEach((u) => L.push(`  - ${u.id} ${u.title}`)) }
   return L.join('\n')
@@ -128,7 +133,8 @@ export function reportHtml(run, bugs, previousRun) {
   const areaRows = Object.entries(s.byArea).map(([a, v]) => [esc(a), v.total, v['Pass'], v['Fail'], v['Blocked'], v['Not tested'], v['Not applicable']])
   const failRows = s.failed.map((f) => [esc(f.id), esc(f.priority), esc(f.group), esc(f.title), esc(f.notes), esc(f.bugIds.join(', '))])
   const blockedRows = s.blocked.map((f) => [esc(f.id), esc(f.priority), esc(f.group), esc(f.title), esc(f.notes)])
-  const bugRows = s.openBugs.map((b) => [esc(b.id), esc(b.severity), esc(b.status), esc(b.title), esc(b.itemId), esc(bugNotes(b)), esc(b.assignee)])
+  const bugRows = s.openBugs.map((b) => [esc(b.id), esc(b.severity), esc(b.status), esc(b.title), esc(b.itemId), esc(bugNotes(b)), esc(b.expected), esc(b.assignee)])
+  const checkedRows = s.checked.map((f) => [esc(f.status), esc(f.id), esc(f.group), esc(f.title), esc(f.notes), esc(f.bugIds.join(', '))])
   const untested = s.untestedHigh.map((u) => [esc(u.id), esc(u.group), esc(u.title)])
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>QA report - ${esc(run.name)}</title>
 <style>
@@ -157,7 +163,8 @@ ${s.regressions.length ? `<h2>Regressions (passed last run, failing now)</h2>${t
     esc([...g.Fail, ...g.Blocked].slice(0, 8).map((f) => `${f.status === 'Fail' ? 'FAIL' : 'BLOCKED'} ${f.id} ${f.title}${f.notes ? ' - ' + f.notes.slice(0, 120) : ''}`).join('\n')).replace(/\n/g, '<br>')]))}
 <h2>Failed checks (${s.failed.length})</h2>${table(['ID', 'Priority', 'Where', 'Check', 'Notes', 'Bugs'], failRows)}
 <h2>Blocked checks (${s.blocked.length})</h2>${table(['ID', 'Priority', 'Where', 'Check', 'Notes'], blockedRows)}
-<h2>Open bugs (${s.openBugs.length})</h2>${table(['Bug', 'Severity', 'Status', 'Title', 'Check', 'Notes', 'Assignee'], bugRows)}
+<h2>Open bugs (${s.openBugs.length})</h2>${table(['Bug', 'Severity', 'Status', 'Title', 'Check', 'What happened', 'Expected', 'Assignee'], bugRows)}
+<h2>Every checked task (${s.checked.length})</h2><p class="meta">Pass, fail, blocked and not applicable, including the note written on each task and any bug linked to it. Tasks still marked "Not tested" are not repeated here.</p>${table(['Status', 'ID', 'Where', 'Check', 'Notes', 'Bugs'], checkedRows)}
 <h2>High-priority checks not tested (${s.untestedHigh.length})</h2>${table(['ID', 'Where', 'Check'], untested)}
 <p class="meta">Verdict rules: NO-GO if any high-priority check failed, is blocked or untested, or a critical/major bug is open. GO WITH RISKS if only lower-priority issues remain. Otherwise GO.</p>
 </body></html>`

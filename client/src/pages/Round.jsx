@@ -51,9 +51,9 @@ export default function Round() {
           <a className="btn ghost" href={`/api/runs/${rid}/report.html`} target="_blank" rel="noreferrer">Open report</a>
         </div>
       </div>
-      <Verdict stats={run.stats} />
-      <Counters counts={run.stats.counts} />
-      <div className="card"><Progress stats={run.stats} /></div>
+      {tab !== 'checklist' && <Verdict stats={run.stats} />}
+      {tab !== 'checklist' && <Counters counts={run.stats.counts} />}
+      {tab !== 'checklist' && <div className="card"><Progress stats={run.stats} /></div>}
       <nav className="tabs sub">
         <button className={tab === 'checklist' ? 'active' : ''} onClick={() => setTab('checklist')}>Checklist</button>
         <button className={tab === 'problems' ? 'active' : ''} onClick={() => setTab('problems')}>Problems by page / module ({run.stats.problems})</button>
@@ -61,18 +61,7 @@ export default function Round() {
       </nav>
 
       {tab === 'checklist' && (
-        <>
-          <div className="filters">
-            <input type="search" placeholder="Search code, task or page…" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} />
-            <select value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })}><option value="">All areas</option>{areas.map((a) => <option key={a}>{a}</option>)}</select>
-            <select value={f.priority} onChange={(e) => setF({ ...f, priority: e.target.value })}><option value="">All priorities</option><option>high</option><option>medium</option><option>low</option></select>
-            <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option value="">All statuses</option>{STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
-            {!locked && <button className="ghost" onClick={runAuto}>Run automatic checks</button>}
-          </div>
-          <div className="muted">{items.length} of {run.items.length} tasks</div>
-          {items.length === 0 && <div className="empty">No tasks match the filters.</div>}
-          <ItemList items={items} results={run.results} locked={locked} onSet={setItem} onBug={(i) => setBugFor(i)} />
-        </>
+        <Checklist items={items} total={run.items.length} results={run.results} stats={run.stats} areas={areas} filters={f} setFilters={setF} locked={locked} onSet={setItem} onBug={(i) => setBugFor(i)} onAuto={runAuto} />
       )}
       {tab === 'problems' && <Problems rid={rid} />}
       {tab === 'finish' && <Finish run={run} locked={run.status === 'closed' || !canTest} onDone={st.reload} setMail={setMail} />}
@@ -82,54 +71,126 @@ export default function Round() {
   )
 }
 
-function ItemList({ items, results, locked, onSet, onBug }) {
-  const shown = items.slice(0, 600)
-  let last = null
+function groupSections(items) {
+  const map = new Map()
+  for (const it of items) {
+    const key = `${it.area}\0${it.group}`
+    if (!map.has(key)) map.set(key, { key, area: it.area, group: it.group, items: [] })
+    map.get(key).items.push(it)
+  }
+  return [...map.values()]
+}
+
+function Checklist({ items, total, results, stats, areas, filters, setFilters, locked, onSet, onBug, onAuto }) {
+  const sections = useMemo(() => groupSections(items), [items])
+  const [sectionKey, setSectionKey] = useState('')
+  const [openId, setOpenId] = useState(null)
+  const pane = useRef(null)
+  useEffect(() => {
+    if (!sections.some((s) => s.key === sectionKey)) setSectionKey(sections[0]?.key || '')
+  }, [sections, sectionKey])
+  const current = sections.find((s) => s.key === sectionKey) || sections[0]
+  const index = sections.findIndex((s) => s.key === current?.key)
+  const pick = (key) => { setSectionKey(key); setOpenId(null); pane.current?.scrollIntoView({ block: 'nearest' }) }
+  const statusOf = (id) => results[id]?.status || 'Not tested'
+  const doneIn = (list) => list.filter((it) => statusOf(it.id) !== 'Not tested').length
+  const setStatus = (status) => setFilters({ ...filters, status: filters.status === status ? '' : status })
   return (
-    <div>
-      {shown.map((it) => {
-        const r = results[it.id] || { status: 'Not tested', notes: '', bugIds: [] }
-        const head = `${it.area} - ${it.group}`
-        const showHead = head !== last; last = head
-        return (
-          <div key={it.id}>
-            {showHead && <div className="group">{head}</div>}
-            <Item it={it} r={r} locked={locked} onSet={onSet} onBug={onBug} />
+    <>
+      <div className="round-summary">
+        <Verdict stats={stats} compact />
+        <button type="button" className={`chip-btn ${filters.status === '' ? 'on' : ''}`} onClick={() => setFilters({ ...filters, status: '' })}>All {total}</button>
+        {STATUSES.map((s) => (
+          <button key={s} type="button" className={`chip-btn c-${s.replace(/ /g, '')} ${filters.status === s ? 'on' : ''}`} onClick={() => setStatus(s)}>
+            {stats.counts[s]} {s === 'Not applicable' ? 'N/A' : s}
+          </button>
+        ))}
+        <div className="summary-bar"><Progress stats={stats} /></div>
+      </div>
+      <div className="filters">
+        <input type="search" placeholder="Search code, task or page…" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
+        <select value={filters.area} onChange={(e) => setFilters({ ...filters, area: e.target.value })}><option value="">All areas</option>{areas.map((a) => <option key={a}>{a}</option>)}</select>
+        <select value={filters.priority} onChange={(e) => setFilters({ ...filters, priority: e.target.value })}><option value="">All priorities</option><option>high</option><option>medium</option><option>low</option></select>
+        {!locked && <button className="ghost" onClick={onAuto}>Run automatic checks</button>}
+        <span className="muted">{items.length} match · {sections.length} pages / modules</span>
+      </div>
+      {sections.length === 0 && <div className="empty">No tasks match the filters.</div>}
+      {sections.length > 0 && (
+        <div className="round-work">
+          <nav className="section-nav" aria-label="Pages and modules">
+            {sections.map((s, i) => {
+              const showArea = i === 0 || sections[i - 1].area !== s.area
+              const done = doneIn(s.items)
+              return (
+                <div key={s.key}>
+                  {showArea && <div className="section-area">{s.area}</div>}
+                  <button type="button" className={s.key === current.key ? 'on' : ''} onClick={() => pick(s.key)}>
+                    <span className="g">{s.group}<span className="a">{done === s.items.length ? 'Done' : `${s.items.length - done} left`}</span>
+                      <span className="meter"><i style={{ width: `${Math.round((done / s.items.length) * 100)}%` }} /></span>
+                    </span>
+                    <span className="n">{done}/{s.items.length}</span>
+                  </button>
+                </div>
+              )
+            })}
+          </nav>
+          <div ref={pane}>
+            <div className="row between section-head">
+              <div><h3>{current.group}</h3><div className="muted small">{current.area} · {doneIn(current.items)} of {current.items.length} checked</div></div>
+              <div className="row gap">
+                <button className="ghost small" disabled={index <= 0} onClick={() => pick(sections[index - 1].key)}>Previous</button>
+                <button className="ghost small" disabled={index >= sections.length - 1} onClick={() => pick(sections[index + 1].key)}>Next</button>
+              </div>
+            </div>
+            <div className="task-panel">
+              {current.items.map((it) => (
+                <Item key={it.id} it={it} r={results[it.id] || { status: 'Not tested', notes: '', bugIds: [] }} open={openId === it.id} onToggle={() => setOpenId(openId === it.id ? null : it.id)} locked={locked} onSet={onSet} onBug={onBug} />
+              ))}
+            </div>
           </div>
-        )
-      })}
-      {items.length > shown.length && <div className="muted">Showing the first {shown.length}. Use the filters to narrow down.</div>}
-    </div>
+        </div>
+      )}
+    </>
   )
 }
-function Item({ it, r, locked, onSet, onBug }) {
+
+function Item({ it, r, open, onToggle, locked, onSet, onBug }) {
   const [notes, setNotes] = useState(r.notes || '')
   const timer = useRef()
   useEffect(() => { setNotes(r.notes || '') }, [r.notes])
   const onNotes = (v) => { setNotes(v); clearTimeout(timer.current); timer.current = setTimeout(() => onSet(it.id, { notes: v }), 700) }
   return (
-    <div className={`item s-${r.status.replace(/ /g, '')}`}>
-      <div className="code">{it.id}</div>
-      <div className="main">
-        <div className="title">{it.title} <span className={`chip ${it.priority}`}>{it.priority}</span>{r.source === 'auto' && <span className="chip auto">set automatically</span>}</div>
-        <div className="more"><b>What to test: </b>{it.steps || <span className="muted">Not written yet</span>}</div>
-        <div className="more"><b>Expected result: </b>{it.expected || <span className="muted">Not written yet</span>}</div>
-        {it.when && <div className="more"><b>When it appears: </b>{it.when}</div>}
-        {it.ifEmpty && <div className="more"><b>If empty / loading: </b>{it.ifEmpty}</div>}
-        <textarea rows={1} className="notes" placeholder="Notes: what you saw, browser, device" value={notes} disabled={locked} onChange={(e) => onNotes(e.target.value)} />
-        <div className="row gap">
-          {!locked && <button className="ghost small" onClick={() => onBug(it)}>Report bug</button>}
+    <div className={`task s-${r.status.replace(/ /g, '')}${open ? ' open' : ''}`}>
+      <div className="task-row">
+        <button type="button" className="chev" aria-expanded={open} aria-label={`${open ? 'Hide' : 'Show'} details for ${it.id}`} onClick={onToggle}>{open ? '▾' : '▸'}</button>
+        <button type="button" className="task-title" onClick={onToggle}>
+          <span className="code">{it.id}</span>
+          <span className="title">{it.title}</span>
+          <span className={`chip ${it.priority}`}>{it.priority}</span>
+          {r.source === 'auto' && <span className="chip auto">auto</span>}
           {(r.bugIds || []).map((b) => <span key={b} className="chip">{b}</span>)}
-          {r.tester && r.source !== 'auto' && <span className="muted small">by {r.tester}</span>}
+        </button>
+        <div className="status-btns inline" role="group" aria-label={`Status for ${it.id}`}>
+          {STATUSES.filter((s) => s !== 'Not tested' || r.status !== 'Not tested').map((s) => (
+            <button key={s} type="button" className={`small ${r.status === s ? `on ${s.replace(/ /g, '')}` : ''}`} disabled={locked || r.status === s} onClick={() => onSet(it.id, { status: s })}>
+              {s === 'Not applicable' ? 'N/A' : s === 'Not tested' ? 'Clear' : s}
+            </button>
+          ))}
         </div>
       </div>
-      <div className="status-btns" role="group" aria-label={`Status for ${it.id}`}>
-        {STATUSES.map((s) => (
-          <button key={s} type="button" className={`small ${r.status === s ? `on ${s.replace(/ /g, '')}` : ''}`} disabled={locked || r.status === s} onClick={() => onSet(it.id, { status: s })}>
-            {s === 'Not applicable' ? 'N/A' : s}
-          </button>
-        ))}
-      </div>
+      {open && (
+        <div className="task-detail">
+          <div className="more"><b>What to test: </b>{it.steps || <span>Not written yet</span>}</div>
+          <div className="more"><b>Expected result: </b>{it.expected || <span>Not written yet</span>}</div>
+          {it.when && <div className="more"><b>When it appears: </b>{it.when}</div>}
+          {it.ifEmpty && <div className="more"><b>If empty / loading: </b>{it.ifEmpty}</div>}
+          <textarea rows={2} className="notes" placeholder="Notes: what you saw, browser, device" value={notes} disabled={locked} onChange={(e) => onNotes(e.target.value)} />
+          <div className="row gap">
+            {!locked && <button className="ghost small" onClick={() => onBug(it)}>Report bug</button>}
+            {r.tester && r.source !== 'auto' && <span className="muted small">by {r.tester}</span>}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -158,7 +219,7 @@ function Finish({ run, locked, onDone }) {
   return (
     <div className="card">
       <h3>Finish this round and email the report</h3>
-      <p className="muted">Closes the round (results can no longer change) and sends the final report. It lists every page and module with a failed or blocked check, what is not tested, open bugs and regressions.</p>
+      <p className="muted">Closes the round and emails one report. The report includes every pass, fail, blocked and not-applicable result with its note, plus each open bug and what happened.</p>
       {run.stats.counts['Not tested'] > 0 && <p className="warn">{run.stats.counts['Not tested']} task(s) are still "Not tested" and will be listed.</p>}
       <Loading state={st} />
       {m && <p className="muted">{m.ready ? <>Will be sent to <b>{m.to.join(', ')}</b> from {m.from}.</> : <>Email is not ready. Missing: <b>{m.missing.join(', ')}</b>. Recipients are set under Settings; SMTP settings are in the server's .env file.</>}</p>}
