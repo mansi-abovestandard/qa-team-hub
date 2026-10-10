@@ -10,7 +10,7 @@ export default function Rounds() {
   return (
     <div>
       <div className="page-head">
-        <p className="muted">Each Saturday, start a new round. That copies <b>every task again</b>, all set to "Not tested": public pages by section, and each CMS module by section. Click Pass, Fail, Blocked or N/A on each task, add a note, and report a bug when something is wrong. Finish sends one report, with those notes and bugs, to the addresses in Settings. Earlier rounds keep their results.</p>
+        <p className="muted">Each Saturday, start a new round. That copies every task again, all set to Not tested. On a round, mark Pass, Fail, Blocked or N/A, add a note, and use Report bug when something is wrong. Open report and Download report on that round show the results at any time. Finish and email sends that same report to the addresses in Settings, and only if mail is configured on the server. Earlier rounds keep their results.</p>
         {canTest && <button className="primary" onClick={() => setOpen(true)}>Start new test round (all tasks again)</button>}
       </div>
       <Loading state={st} />

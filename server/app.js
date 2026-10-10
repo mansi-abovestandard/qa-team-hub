@@ -418,6 +418,7 @@ export function createApp(db) {
   app.get('/api/runs/:rid/report.:ext(html|txt)', (req, res) => {
     const r = loadRun(req)
     const run = runView(db, r.id), bugs = projectBugsView(db, r.project_id), prev = previousRunView(db, run)
+    if (req.query.download) res.set('Content-Disposition', `attachment; filename="${run.id}-report.${req.params.ext}"`)
     if (req.params.ext === 'html') res.type('html').send(reportHtml(run, bugs, prev)); else res.type('text').send(reportText(run, bugs, prev))
   })
   app.get('/api/runs/:rid/mail', (req, res) => {

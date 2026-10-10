@@ -49,8 +49,12 @@ export default function Round() {
           <div className="muted">Round {run.label} · {run.status} · started {fmtDate(run.createdAt)}{run.createdBy ? ` by ${run.createdBy}` : ''}{run.baseUrl ? ` · ${run.baseUrl}` : ''}</div></div>
         <div className="row gap">
           <a className="btn ghost" href={`/api/runs/${rid}/report.html`} target="_blank" rel="noreferrer">Open report</a>
+          <a className="btn ghost" href={`/api/runs/${rid}/report.html?download=1`}>Download report</a>
+          <a className="btn ghost" href={`/api/runs/${rid}/report.txt?download=1`}>Download text</a>
         </div>
       </div>
+      <p className="muted small">Open report shows this round in the browser. Download report saves that same page as an HTML file, not a Word document. Download text saves the plain-text copy. You can do this while the round is still open. Email is separate: it is sent only from Finish and email, to the addresses in Settings, and only when the server has mail settings.</p>
+      <p className="muted small">To report a bug, open a task and click Report bug, then write what happened. The bug is saved on the Bugs tab and its id is shown on that task. The report lists every open bug, with what happened and what was expected. Saving a bug does not send an email.</p>
       {tab !== 'checklist' && <Verdict stats={run.stats} />}
       {tab !== 'checklist' && <Counters counts={run.stats.counts} />}
       {tab !== 'checklist' && <div className="card"><Progress stats={run.stats} /></div>}
@@ -219,8 +223,8 @@ function Finish({ run, locked, onDone }) {
   return (
     <div className="card">
       <h3>Finish this round and email the report</h3>
-      <p className="muted">Closes the round and emails one report. The report includes every pass, fail, blocked and not-applicable result with its note, plus each open bug and what happened.</p>
-      {run.stats.counts['Not tested'] > 0 && <p className="warn">{run.stats.counts['Not tested']} task(s) are still "Not tested" and will be listed.</p>}
+      <p className="muted">Finish closes the round so results can no longer be changed. The email is the same report as Open report and Download report: every pass, fail, blocked and not-applicable result with its note, every open bug with what happened, and the high-priority checks that are still not tested. Other untested checks are counted by page, not listed one by one.</p>
+      {run.stats.counts['Not tested'] > 0 && <p className="warn">{run.stats.counts['Not tested']} task(s) are still not tested. High-priority ones are named in the report. The rest are counted by page.</p>}
       <Loading state={st} />
       {m && <p className="muted">{m.ready ? <>Will be sent to <b>{m.to.join(', ')}</b> from {m.from}.</> : <>Email is not ready. Missing: <b>{m.missing.join(', ')}</b>. Recipients are set under Settings; SMTP settings are in the server's .env file.</>}</p>}
       {run.status === 'closed' ? <p><b>This round is closed.</b></p> : (
@@ -254,6 +258,7 @@ function BugModal({ pid, run, item, onClose, onSaved }) {
           <Field label="What I expected"><textarea rows={3} value={f.expected} onChange={(e) => setF({ ...f, expected: e.target.value })} /></Field>
           <Field label="What happened"><textarea rows={3} value={f.actual} onChange={(e) => setF({ ...f, actual: e.target.value })} autoFocus /></Field>
         </div>
+        <p className="muted small">Saving adds this bug to the Bugs tab and to the report for this round. It does not send an email.</p>
         <div className="actions"><button type="button" className="ghost" onClick={onClose}>Cancel</button><button className="primary">Save bug</button></div>
       </form>
     </Modal>

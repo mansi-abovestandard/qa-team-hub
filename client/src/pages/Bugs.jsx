@@ -17,7 +17,7 @@ export default function Bugs() {
           <option value="open">Open (open, in progress, fixed)</option><option value="all">All</option>
           <option value="verified">Verified</option><option value="wontfix">Won't fix</option>
         </select>
-        <span className="muted">{list.length} bug(s). "fixed" means fixed but not yet verified in a round. Bugs are reported from a task inside a test round.</span>
+        <span className="muted">{list.length} bug(s). Report a bug from a task in a test round: open the task and click Report bug. Open bugs are included in that round's report. "Fixed" means fixed but not yet verified. This page does not send the report email.</span>
       </div>
       <Loading state={st} />
       {st.data && list.length === 0 && <div className="empty">No bugs here.</div>}
