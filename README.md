@@ -7,13 +7,12 @@ bugs, and a final report that is emailed to the team. React front end, Node API,
 
 ```bash
 npm install
-npm run build        # builds the React app into client/dist
-npm start            # http://127.0.0.1:4400
+npm run dev          # React dev server http://127.0.0.1:5174  (API stays on :4411)
 ```
 
-On the first visit you create the admin account. Then: **New project** > pick a template > **Settings and team** to add people.
+`npm run dev` is the frontend to use while working. It is the React app with hot reload. The API is the server already running on port 4411, so the Lokalnyt data is the same.
 
-Development: `npm run dev:server` and `npm run dev:client` (Vite on :5173 proxies to :4400). Tests: `npm test`.
+`npm run build` then `npm start` serves the built files on port 4400. That copy does not reload when the React code changes. Tests: `npm test`.
 
 ## How it works
 

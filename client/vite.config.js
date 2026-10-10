@@ -7,5 +7,10 @@ export default defineConfig({
   root: here,
   plugins: [react()],
   build: { outDir: path.join(here, 'dist'), emptyOutDir: true },
-  server: { port: 5173, proxy: { '/api': 'http://127.0.0.1:4400' } },
+  server: {
+    host: '127.0.0.1',
+    port: 5174,
+    strictPort: true,
+    proxy: { '/api': `http://127.0.0.1:${process.env.API_PORT || '4411'}` },
+  },
 })

@@ -6,8 +6,9 @@
   "description": "Team QA tool: projects, checklists from templates, test rounds, bugs and emailed reports",
   "engines": { "node": ">=22.13" },
   "scripts": {
+    "dev": "API_PORT=4411 vite --config client/vite.config.js",
     "dev:server": "node --disable-warning=ExperimentalWarning --watch server/index.js",
-    "dev:client": "vite --config client/vite.config.js",
+    "dev:client": "API_PORT=4411 vite --config client/vite.config.js",
     "build": "vite build --config client/vite.config.js",
     "start": "node --disable-warning=ExperimentalWarning server/index.js",
     "test": "node --disable-warning=ExperimentalWarning --test tests/*.test.js",
