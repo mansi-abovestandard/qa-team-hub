@@ -45,6 +45,13 @@ test('admin adds users; wrong passwords are rejected; login works', async () => 
   await viewer('POST', '/api/auth/login', { email: 'vic@x.dk', password: PW })
   await stranger('POST', '/api/auth/login', { email: 'sam@x.dk', password: PW })
   ;[c] = await tester('POST', '/api/users', { email: 'x@x.dk', name: 'X', password: PW }); assert.equal(c, 403) // not admin
+  ;[c, d] = await tester('PATCH', '/api/auth/profile', { name: 'Tess T' }); assert.equal(c, 200); assert.equal(d.user.name, 'Tess T')
+  ;[c] = await tester('POST', '/api/auth/password', { current: 'wrong-pass-1', next: 'new-password-2' }); assert.equal(c, 400)
+  ;[c] = await tester('POST', '/api/auth/password', { current: PW, next: 'new-password-2' }); assert.equal(c, 200)
+  ;[c] = await client()('POST', '/api/auth/login', { email: 'tess@x.dk', password: PW }); assert.equal(c, 401)
+  ;[c] = await tester('POST', '/api/auth/login', { email: 'tess@x.dk', password: 'new-password-2' }); assert.equal(c, 200)
+  ;[c] = await tester('POST', '/api/auth/password', { current: 'new-password-2', next: PW }); assert.equal(c, 200)
+  ;[c] = await tester('PATCH', '/api/auth/profile', { name: 'Tess Tester' }); assert.equal(c, 200)
 })
 
 let pid, taskCodes

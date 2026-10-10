@@ -13,6 +13,7 @@ import Tasks from './pages/Tasks.jsx'
 import Bugs from './pages/Bugs.jsx'
 import Settings from './pages/Settings.jsx'
 import Users from './pages/Users.jsx'
+import Profile from './pages/Profile.jsx'
 
 export default function App() {
   const [auth, setAuth] = useState({ loading: true, user: null, needsSetup: false })
@@ -39,6 +40,7 @@ function Shell() {
         <nav>
           <NavLink to="/" end>Projects</NavLink>
           {user.isAdmin && <NavLink to="/admin/users">Team</NavLink>}
+          <NavLink to="/profile">Profile</NavLink>
         </nav>
         <span className="grow" />
         <span className="who">{user.name}{user.isAdmin ? ' (admin)' : ''}</span>
@@ -49,6 +51,7 @@ function Shell() {
           <Route path="/" element={<Projects />} />
           <Route path="/new-project" element={user.isAdmin ? <NewProject /> : <Navigate to="/" />} />
           <Route path="/admin/users" element={user.isAdmin ? <Users /> : <Navigate to="/" />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/projects/:pid" element={<ProjectLayout />}>
             <Route index element={<Rounds />} />
             <Route path="rounds/:rid" element={<Round />} />

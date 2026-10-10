@@ -62,8 +62,15 @@ export function createApp(db) {
     const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)
     if (!(await verifyPassword(String(req.body?.current || ''), u.password_hash))) throw bad('Current password is wrong')
     checkPasswordStrength(req.body?.next)
+    if (req.body.next === req.body?.current) throw bad('Choose a different password')
     db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(await hashPassword(req.body.next), u.id)
     res.json({ ok: true })
+  }))
+  app.patch('/api/auth/profile', requireUser, wrap(async (req, res) => {
+    const name = str(req.body?.name, 100)
+    if (!name) throw bad('Enter a name')
+    db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, req.user.id)
+    res.json({ user: { ...req.user, name } })
   }))
 
   // everything below needs a signed-in user
