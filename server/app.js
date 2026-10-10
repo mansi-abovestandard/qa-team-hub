@@ -38,11 +38,14 @@ function assertProdReady(row) {
   const missing = prodBlockers(row)
   if (missing.length) throw bad(`Not ready for production: ${missing.join('; ')}.`)
 }
+function creatorName(user) {
+  return str(user?.name, 120) || str(user?.email, 120)
+}
 function deployFields(b) {
   const branch_name = str(b.branchName, 200)
   if (!branch_name) throw bad('Branch name is required')
   return {
-    branch_name, base_branch: str(b.baseBranch, 200), description: str(b.description, 500), developer: str(b.developer, 120),
+    branch_name, base_branch: str(b.baseBranch, 200), description: str(b.description, 500),
     branch_type: oneOf(b.branchType || 'feature', BRANCH_TYPES, 'branch type'),
     staging_deploy: oneOf(b.stagingDeploy || 'pending', DEPLOY_STATES, 'staging deploy'),
     staging_test: oneOf(b.stagingTest || 'pending', TEST_STATES, 'staging testing'),
@@ -253,7 +256,7 @@ export function createApp(db) {
   const deployOut = (row) => {
     const blockers = prodBlockers(row)
     return {
-      id: row.id, branchName: row.branch_name, baseBranch: row.base_branch, description: row.description, developer: row.developer, branchType: row.branch_type,
+      id: row.id, branchName: row.branch_name, baseBranch: row.base_branch, description: row.description, developer: row.created_by_name || row.developer, branchType: row.branch_type,
       stagingDeploy: row.staging_deploy, stagingTest: row.staging_test, liveDeploy: row.live_deploy, liveTest: row.live_test, finalStatus: row.final_status,
       stagingResult: row.staging_result, liveResult: row.live_result, createdBy: row.created_by_name || '', createdAt: row.created_at, updatedAt: row.updated_at,
       readyForProd: blockers.length === 0, prodBlockers: blockers,
@@ -272,9 +275,10 @@ export function createApp(db) {
   app.post('/api/projects/:pid/deployments', wrap(async (req, res) => {
     const p = loadProject(req, 'editor')
     const fields = deployFields(req.body || {})
-    assertProdReady(fields)
+    const developer = creatorName(req.user)
+    assertProdReady({ ...fields, developer })
     const id = db.prepare(`INSERT INTO deployments (project_id, branch_name, base_branch, description, developer, branch_type, staging_deploy, staging_test, live_deploy, live_test, final_status, staging_result, live_result, created_by)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(p.id, fields.branch_name, fields.base_branch, fields.description, fields.developer, fields.branch_type, fields.staging_deploy, fields.staging_test, fields.live_deploy, fields.live_test, fields.final_status, fields.staging_result, fields.live_result, req.user.id).lastInsertRowid
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(p.id, fields.branch_name, fields.base_branch, fields.description, developer, fields.branch_type, fields.staging_deploy, fields.staging_test, fields.live_deploy, fields.live_test, fields.final_status, fields.staging_result, fields.live_result, req.user.id).lastInsertRowid
     res.status(201).json(deployOut(db.prepare(`SELECT d.*, u.name AS created_by_name FROM deployments d LEFT JOIN users u ON u.id = d.created_by WHERE d.id = ?`).get(id)))
   }))
   app.patch('/api/deployments/:id', wrap(async (req, res) => {
@@ -293,7 +297,6 @@ export function createApp(db) {
       if (b.branchName !== undefined) next.branch_name = str(b.branchName, 200)
       if (b.baseBranch !== undefined) next.base_branch = str(b.baseBranch, 200)
       if (b.description !== undefined) next.description = str(b.description, 500)
-      if (b.developer !== undefined) next.developer = str(b.developer, 120)
       if (b.branchType !== undefined) next.branch_type = oneOf(b.branchType, BRANCH_TYPES, 'branch type')
       set('staging_deploy', 'stagingDeploy', DEPLOY_STATES, 'staging deploy')
       set('live_deploy', 'liveDeploy', DEPLOY_STATES, 'live deploy')

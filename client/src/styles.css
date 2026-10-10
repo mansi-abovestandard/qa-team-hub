@@ -514,9 +514,22 @@ textarea {
   white-space: nowrap
 }
 
+.deploy-table td.branch {
+  width: 14rem;
+  min-width: 14rem;
+  max-width: 14rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35
+}
+
 .deploy-table td:nth-child(4) {
   white-space: normal;
   min-width: 180px
+}
+
+.two.branch-pair {
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr)
 }
 
 table {

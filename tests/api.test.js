@@ -137,7 +137,7 @@ test('editor records a branch; production deploy waits for a passed staging test
     { userId: id('admin@x.dk'), role: 'admin' }, { userId: id('tess@x.dk'), role: 'tester' }, { userId: id('vic@x.dk'), role: 'viewer' }, { userId: id('edi@x.dk'), role: 'editor' },
   ] }); assert.equal(c, 200)
   ;[c] = await tester('POST', `/api/projects/${pid}/deployments`, { branchName: 'nope', developer: 'Tess', baseBranch: 'main' }); assert.equal(c, 403)
-  ;[c, d] = await editor('POST', `/api/projects/${pid}/deployments`, { branchName: 'fix/logo', baseBranch: 'main', developer: 'Surbhi', description: 'logo centering', branchType: 'issue', stagingDeploy: 'deployed' }); assert.equal(c, 201)
+  ;[c, d] = await editor('POST', `/api/projects/${pid}/deployments`, { branchName: 'fix/logo', baseBranch: 'main', developer: 'Surbhi', description: 'logo centering', branchType: 'issue', stagingDeploy: 'deployed' }); assert.equal(c, 201); assert.equal(d.developer, 'Ed Editor'); assert.equal(d.createdBy, 'Ed Editor')
   const dep = d
   assert.equal(dep.readyForProd, false)
   ;[c] = await editor('PATCH', `/api/deployments/${dep.id}`, { liveDeploy: 'deployed' }); assert.equal(c, 400)

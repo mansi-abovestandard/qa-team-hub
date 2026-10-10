@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { del, get, patch, post } from '../api.js'
+import { useAuth } from '../auth.js'
 import { Field, Loading, Modal, useAsync, useToast } from '../ui.jsx'
 
 const TYPES = [['feature', 'Feature'], ['bugfix', 'Bugfix'], ['bug', 'Bug'], ['issue', 'Issue'], ['ui', 'UI design']]
@@ -9,7 +10,7 @@ const TEST = [['pending', 'Pending'], ['in_progress', 'In progress'], ['complete
 const RESULT = [['', '—'], ['pass', 'Pass'], ['fail', 'Fail']]
 const label = (list, value) => list.find((x) => x[0] === value)?.[1] || value || '—'
 
-const empty = { branchName: '', baseBranch: '', description: '', developer: '', branchType: 'feature', stagingDeploy: 'pending', stagingTest: 'pending', liveDeploy: 'pending', liveTest: 'pending', finalStatus: 'pending', stagingResult: '', liveResult: '' }
+const empty = { branchName: '', baseBranch: '', description: '', branchType: 'feature', stagingDeploy: 'pending', stagingTest: 'pending', liveDeploy: 'pending', liveTest: 'pending', finalStatus: 'pending', stagingResult: '', liveResult: '' }
 
 export default function Deployments() {
   const { pid } = useParams()
@@ -21,7 +22,7 @@ export default function Deployments() {
   return (
     <div>
       <div className="page-head">
-        <p className="muted">Developer side of this project. Each row is one GitHub branch: who made it, which branch it was created from, and where it is on staging and production. Production can be marked Deployed only after staging is deployed, staging testing is complete, and the staging result is Pass.</p>
+        <p className="muted">Developer side of this project. Each row is one GitHub branch. The developer is the account that added it. Production can be marked Deployed only after staging is deployed, staging testing is complete, and the staging result is Pass.</p>
         {canDeploy && <button className="primary" onClick={() => setEdit({ ...empty })}>Add branch</button>}
       </div>
       {st.data.length === 0 && <div className="empty">No branches yet. An editor or admin adds one.</div>}
@@ -38,7 +39,7 @@ export default function Deployments() {
               {st.data.map((d, i) => (
                 <tr key={d.id}>
                   <td>{i + 1}</td>
-                  <td className="mono">{d.branchName}</td>
+                  <td className="mono branch" title={d.branchName}>{d.branchName}</td>
                   <td className="mono">{d.baseBranch || '—'}</td>
                   <td>{d.description}</td>
                   <td>{d.developer}</td>
@@ -65,7 +66,6 @@ export default function Deployments() {
 function blockers(f) {
   const missing = []
   if (!f.branchName.trim()) missing.push('branch name')
-  if (!f.developer.trim()) missing.push('which developer made it')
   if (!f.baseBranch.trim()) missing.push('which branch it was created from')
   if (f.stagingDeploy !== 'deployed') missing.push('staging deploy must be Deployed')
   if (f.stagingTest !== 'complete') missing.push('staging testing must be Complete')
@@ -75,7 +75,9 @@ function blockers(f) {
 
 function EditModal({ row, canDeploy, onClose, onSaved }) {
   const toast = useToast()
-  const [f, setF] = useState({ ...empty, ...row, branchName: row.branchName || '', baseBranch: row.baseBranch || '', description: row.description || '', developer: row.developer || '' })
+  const { user } = useAuth()
+  const who = row.id ? (row.createdBy || row.developer || '—') : (user?.name || user?.email || '—')
+  const [f, setF] = useState({ ...empty, ...row, branchName: row.branchName || '', baseBranch: row.baseBranch || '', description: row.description || '' })
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const missing = blockers(f)
   const pid = window.location.pathname.split('/')[2]
@@ -94,15 +96,15 @@ function EditModal({ row, canDeploy, onClose, onSaved }) {
   return (
     <Modal title={row.id ? f.branchName : 'Add a branch'} onClose={onClose} wide>
       <form onSubmit={submit}>
-        <div className="two">
+        <div className="two branch-pair">
           <Field label="GitHub branch name" hint="Exact branch name"><input value={f.branchName} onChange={set('branchName')} required disabled={!canDeploy} /></Field>
           <Field label="Created from" hint="The branch this was branched off, such as main"><input value={f.baseBranch} onChange={set('baseBranch')} disabled={!canDeploy} placeholder="main" /></Field>
         </div>
+        <Field label="Added by" hint="Taken from the account that created this branch"><input value={who} disabled /></Field>
         <div className="two">
-          <Field label="Developer"><input value={f.developer} onChange={set('developer')} disabled={!canDeploy} /></Field>
           <Field label="Type"><select value={f.branchType} onChange={set('branchType')} disabled={!canDeploy}>{TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
+          <Field label="What changed"><input value={f.description} onChange={set('description')} disabled={!canDeploy} /></Field>
         </div>
-        <Field label="What changed"><input value={f.description} onChange={set('description')} disabled={!canDeploy} /></Field>
         <h4>Staging</h4>
         <div className="two">
           <Field label="Deploy"><select value={f.stagingDeploy} onChange={set('stagingDeploy')} disabled={!canDeploy}>{DEPLOY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
@@ -119,7 +121,7 @@ function EditModal({ row, canDeploy, onClose, onSaved }) {
           <Field label="Final status"><select value={f.finalStatus} onChange={set('finalStatus')} disabled={!canDeploy}>{TEST.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
         </div>
         {f.liveDeploy === 'deployed' && missing.length > 0 && <div className="error-box">Not ready for production: {missing.join('; ')}.</div>}
-        {f.liveDeploy === 'deployed' && missing.length === 0 && <p className="muted small">Ready for production. Branch {f.branchName || '—'} by {f.developer || '—'}, created from {f.baseBranch || '—'}, staging passed.</p>}
+        {f.liveDeploy === 'deployed' && missing.length === 0 && <p className="muted small">Ready for production. Branch {f.branchName || '—'} by {who}, created from {f.baseBranch || '—'}, staging passed.</p>}
         <div className="actions">
           {canDeploy && row.id && <button type="button" className="ghost danger" onClick={remove}>Remove</button>}
           <span className="grow" />
