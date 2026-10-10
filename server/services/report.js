@@ -138,7 +138,7 @@ export function reportHtml(run, bugs, previousRun) {
   const untested = s.untestedHigh.map((u) => [esc(u.id), esc(u.group), esc(u.title)])
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>QA report - ${esc(run.name)}</title>
 <style>
-body{font:15px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1c2430;max-width:1000px;margin:24px auto;padding:0 16px}
+html{color-scheme:light}body{font:15px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#fff;color:#1c2430;max-width:1000px;margin:24px auto;padding:0 16px}
 h1{font-size:24px;margin:0 0 4px} h2{font-size:18px;margin:28px 0 8px;border-bottom:2px solid #e3e8ef;padding-bottom:4px}
 .meta{color:#5b6675;font-size:13px}.verdict{border-radius:10px;padding:16px 20px;color:#fff;margin:16px 0;background:${col}}
 .verdict b{font-size:22px}.cards{display:flex;gap:10px;flex-wrap:wrap}.card{flex:1;min-width:120px;border:1px solid #e3e8ef;border-radius:8px;padding:10px 12px}
