@@ -75,8 +75,8 @@ export function throttle(key) {
 }
 export const clearThrottle = (key) => attempts.delete(key)
 
-// project role: admin > tester > viewer. Global admins act as project admins everywhere.
-const RANK = { viewer: 0, tester: 1, admin: 2 }
+// project role: admin > editor > QA (stored as tester) > viewer. Global admins act as project admins everywhere.
+const RANK = { viewer: 0, tester: 1, editor: 2, admin: 3 }
 export function projectRole(db, user, projectId) {
   if (!user) return null
   if (user.isAdmin) return 'admin'

@@ -46,7 +46,7 @@ export default function Settings() {
 
       <div className="card">
         <h3>Team on this project</h3>
-        <p className="muted"><b>admin</b> manages tasks, team and settings · <b>tester</b> runs rounds, sets statuses, reports bugs · <b>viewer</b> can read. Global admins can do everything everywhere.</p>
+        <p className="muted"><b>admin</b> manages tasks, team and settings. <b>editor</b> can test and can add branches and record staging and production deploys. <b>QA</b> runs rounds, sets statuses, reports bugs, and records staging and live test results. <b>viewer</b> can read. Global admins can do everything everywhere.</p>
         <Loading state={users} />
         {users.data && members && (
           <table>
@@ -54,7 +54,7 @@ export default function Settings() {
             <tbody>{users.data.filter((u) => u.active).map((u) => (
               <tr key={u.id}><td>{u.name} <span className="muted">{u.email}{u.isAdmin ? ' · global admin' : ''}</span></td>
                 <td><select value={roleOf(u.id)} onChange={(e) => setRole(u.id, e.target.value)}>
-                  <option value="">No access</option><option value="viewer">viewer</option><option value="tester">tester</option><option value="admin">admin</option></select></td></tr>
+                  <option value="">No access</option><option value="viewer">viewer</option><option value="tester">QA</option><option value="editor">editor</option><option value="admin">admin</option></select></td></tr>
             ))}</tbody>
           </table>
         )}

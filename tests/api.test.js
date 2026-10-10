@@ -127,3 +127,22 @@ test('security: cross-site and non-JSON writes are blocked; last admin is protec
   ;[c] = await tester('POST', `/api/projects/${pid}/save-as-template`, { name: 'T' }); assert.equal(c, 403)
   ;[c, d] = await admin('POST', `/api/projects/${pid}/save-as-template`, { name: 'My site template' }); assert.equal(c, 201); assert.ok(d.items > 500)
 })
+
+test('editor records a branch; production deploy waits for a passed staging test', async () => {
+  const editor = client()
+  let [c, d] = await admin('POST', '/api/users', { email: 'edi@x.dk', name: 'Ed Editor', password: PW }); assert.equal(c, 201)
+  ;[c] = await editor('POST', '/api/auth/login', { email: 'edi@x.dk', password: PW }); assert.equal(c, 200)
+  ;[c, d] = await admin('GET', '/api/users'); const id = (e) => d.find((u) => u.email === e).id
+  ;[c] = await admin('PUT', `/api/projects/${pid}/members`, { members: [
+    { userId: id('admin@x.dk'), role: 'admin' }, { userId: id('tess@x.dk'), role: 'tester' }, { userId: id('vic@x.dk'), role: 'viewer' }, { userId: id('edi@x.dk'), role: 'editor' },
+  ] }); assert.equal(c, 200)
+  ;[c] = await tester('POST', `/api/projects/${pid}/deployments`, { branchName: 'nope', developer: 'Tess', baseBranch: 'main' }); assert.equal(c, 403)
+  ;[c, d] = await editor('POST', `/api/projects/${pid}/deployments`, { branchName: 'fix/logo', baseBranch: 'main', developer: 'Surbhi', description: 'logo centering', branchType: 'issue', stagingDeploy: 'deployed' }); assert.equal(c, 201)
+  const dep = d
+  assert.equal(dep.readyForProd, false)
+  ;[c] = await editor('PATCH', `/api/deployments/${dep.id}`, { liveDeploy: 'deployed' }); assert.equal(c, 400)
+  ;[c] = await tester('PATCH', `/api/deployments/${dep.id}`, { stagingTest: 'complete', stagingResult: 'pass' }); assert.equal(c, 200)
+  ;[c, d] = await editor('PATCH', `/api/deployments/${dep.id}`, { liveDeploy: 'deployed' }); assert.equal(c, 200); assert.equal(d.liveDeploy, 'deployed'); assert.equal(d.readyForProd, true)
+  ;[c] = await tester('PATCH', `/api/deployments/${dep.id}`, { branchName: 'hijack' }); assert.equal(c, 403)
+  ;[c] = await viewer('DELETE', `/api/deployments/${dep.id}`); assert.equal(c, 403)
+})

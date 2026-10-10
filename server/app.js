@@ -16,7 +16,43 @@ import { csvToObjects } from './services/csv.js'
 const STATUSES = ['Not tested', 'Pass', 'Fail', 'Blocked', 'Not applicable']
 const SEVERITIES = ['critical', 'major', 'minor', 'trivial']
 const BUG_STATUSES = ['open', 'in_progress', 'fixed', 'verified', 'wontfix']
-const ROLES = ['admin', 'tester', 'viewer']
+const ROLES = ['admin', 'editor', 'tester', 'viewer']
+const BRANCH_TYPES = ['feature', 'bugfix', 'bug', 'issue', 'ui']
+const DEPLOY_STATES = ['pending', 'deployed']
+const TEST_STATES = ['pending', 'in_progress', 'complete']
+const FINAL_STATES = ['pending', 'in_progress', 'complete']
+const RESULT_STATES = ['', 'pass', 'fail']
+
+function prodBlockers(row) {
+  const missing = []
+  if (!String(row.branch_name || '').trim()) missing.push('branch name')
+  if (!String(row.developer || '').trim()) missing.push('which developer made it')
+  if (!String(row.base_branch || '').trim()) missing.push('which branch it was created from')
+  if (row.staging_deploy !== 'deployed') missing.push('staging deploy must be Deployed')
+  if (row.staging_test !== 'complete') missing.push('staging testing must be Complete')
+  if (row.staging_result !== 'pass') missing.push('staging result must be Pass')
+  return missing
+}
+function assertProdReady(row) {
+  if (row.live_deploy !== 'deployed') return
+  const missing = prodBlockers(row)
+  if (missing.length) throw bad(`Not ready for production: ${missing.join('; ')}.`)
+}
+function deployFields(b) {
+  const branch_name = str(b.branchName, 200)
+  if (!branch_name) throw bad('Branch name is required')
+  return {
+    branch_name, base_branch: str(b.baseBranch, 200), description: str(b.description, 500), developer: str(b.developer, 120),
+    branch_type: oneOf(b.branchType || 'feature', BRANCH_TYPES, 'branch type'),
+    staging_deploy: oneOf(b.stagingDeploy || 'pending', DEPLOY_STATES, 'staging deploy'),
+    staging_test: oneOf(b.stagingTest || 'pending', TEST_STATES, 'staging testing'),
+    live_deploy: oneOf(b.liveDeploy || 'pending', DEPLOY_STATES, 'live deploy'),
+    live_test: oneOf(b.liveTest || 'pending', TEST_STATES, 'live testing'),
+    final_status: oneOf(b.finalStatus || 'pending', FINAL_STATES, 'final status'),
+    staging_result: oneOf(b.stagingResult || '', RESULT_STATES, 'staging result'),
+    live_result: oneOf(b.liveResult || '', RESULT_STATES, 'live result'),
+  }
+}
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 const userOut = (u) => ({ id: u.id, email: u.email, name: u.name, isAdmin: !!u.is_admin, active: !!u.active })
@@ -211,6 +247,74 @@ export function createApp(db) {
     const name = str(req.body?.name, 120); if (!name) throw bad('Template needs a name')
     if (db.prepare('SELECT 1 FROM templates WHERE name = ?').get(name)) throw new HttpError(409, 'A template with this name already exists')
     res.status(201).json(saveProjectAsTemplate(db, p.id, name, str(req.body?.description, 300)))
+  })
+
+  // ------------------------------------------------------------ deployments (GitHub branch + staging / production)
+  const deployOut = (row) => {
+    const blockers = prodBlockers(row)
+    return {
+      id: row.id, branchName: row.branch_name, baseBranch: row.base_branch, description: row.description, developer: row.developer, branchType: row.branch_type,
+      stagingDeploy: row.staging_deploy, stagingTest: row.staging_test, liveDeploy: row.live_deploy, liveTest: row.live_test, finalStatus: row.final_status,
+      stagingResult: row.staging_result, liveResult: row.live_result, createdBy: row.created_by_name || '', createdAt: row.created_at, updatedAt: row.updated_at,
+      readyForProd: blockers.length === 0, prodBlockers: blockers,
+    }
+  }
+  const loadDeployment = (req) => {
+    const row = db.prepare(`SELECT d.*, u.name AS created_by_name FROM deployments d LEFT JOIN users u ON u.id = d.created_by WHERE d.id = ?`).get(Number(req.params.id))
+    if (!row) throw notFound('Deployment not found')
+    requireProjectRole(db, req.user, row.project_id, 'viewer')
+    return row
+  }
+  app.get('/api/projects/:pid/deployments', (req, res) => {
+    const p = loadProject(req)
+    res.json(db.prepare(`SELECT d.*, u.name AS created_by_name FROM deployments d LEFT JOIN users u ON u.id = d.created_by WHERE d.project_id = ? ORDER BY d.id`).all(p.id).map(deployOut))
+  })
+  app.post('/api/projects/:pid/deployments', wrap(async (req, res) => {
+    const p = loadProject(req, 'editor')
+    const fields = deployFields(req.body || {})
+    assertProdReady(fields)
+    const id = db.prepare(`INSERT INTO deployments (project_id, branch_name, base_branch, description, developer, branch_type, staging_deploy, staging_test, live_deploy, live_test, final_status, staging_result, live_result, created_by)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(p.id, fields.branch_name, fields.base_branch, fields.description, fields.developer, fields.branch_type, fields.staging_deploy, fields.staging_test, fields.live_deploy, fields.live_test, fields.final_status, fields.staging_result, fields.live_result, req.user.id).lastInsertRowid
+    res.status(201).json(deployOut(db.prepare(`SELECT d.*, u.name AS created_by_name FROM deployments d LEFT JOIN users u ON u.id = d.created_by WHERE d.id = ?`).get(id)))
+  }))
+  app.patch('/api/deployments/:id', wrap(async (req, res) => {
+    const cur = loadDeployment(req)
+    const role = projectRole(db, req.user, cur.project_id)
+    const b = req.body || {}
+    const editor = role === 'admin' || role === 'editor'
+    if (role === 'viewer') throw forbidden('A viewer can only read deployments')
+    if (!editor) {
+      const extra = Object.keys(b).filter((k) => !['stagingTest', 'liveTest', 'stagingResult', 'liveResult'].includes(k))
+      if (extra.length) throw forbidden('QA can update testing status and pass or fail. An editor adds the branch and records deploys.')
+    }
+    const next = { ...cur }
+    const set = (col, key, allowed, label) => { if (b[key] !== undefined) next[col] = oneOf(b[key], allowed, label) }
+    if (editor) {
+      if (b.branchName !== undefined) next.branch_name = str(b.branchName, 200)
+      if (b.baseBranch !== undefined) next.base_branch = str(b.baseBranch, 200)
+      if (b.description !== undefined) next.description = str(b.description, 500)
+      if (b.developer !== undefined) next.developer = str(b.developer, 120)
+      if (b.branchType !== undefined) next.branch_type = oneOf(b.branchType, BRANCH_TYPES, 'branch type')
+      set('staging_deploy', 'stagingDeploy', DEPLOY_STATES, 'staging deploy')
+      set('live_deploy', 'liveDeploy', DEPLOY_STATES, 'live deploy')
+      set('final_status', 'finalStatus', FINAL_STATES, 'final status')
+    }
+    set('staging_test', 'stagingTest', TEST_STATES, 'staging testing')
+    set('live_test', 'liveTest', TEST_STATES, 'live testing')
+    set('staging_result', 'stagingResult', RESULT_STATES, 'staging result')
+    set('live_result', 'liveResult', RESULT_STATES, 'live result')
+    if (!next.branch_name) throw bad('Branch name is required')
+    if (next.live_deploy === 'deployed' && cur.live_deploy !== 'deployed') assertProdReady(next)
+    if (next.live_deploy === 'deployed') assertProdReady(next)
+    db.prepare(`UPDATE deployments SET branch_name=?, base_branch=?, description=?, developer=?, branch_type=?, staging_deploy=?, staging_test=?, live_deploy=?, live_test=?, final_status=?, staging_result=?, live_result=?, updated_at=datetime('now') WHERE id=?`)
+      .run(next.branch_name, next.base_branch, next.description, next.developer, next.branch_type, next.staging_deploy, next.staging_test, next.live_deploy, next.live_test, next.final_status, next.staging_result, next.live_result, cur.id)
+    res.json(deployOut({ ...next, created_by_name: cur.created_by_name }))
+  }))
+  app.delete('/api/deployments/:id', (req, res) => {
+    const row = loadDeployment(req)
+    requireProjectRole(db, req.user, row.project_id, 'editor')
+    db.prepare('DELETE FROM deployments WHERE id = ?').run(row.id)
+    res.json({ ok: true })
   })
 
   // ------------------------------------------------------------ tasks (the project's checklist)

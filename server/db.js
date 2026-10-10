@@ -153,6 +153,36 @@ CREATE INDEX idx_tasks_project ON tasks(project_id);
 CREATE INDEX idx_runs_project ON runs(project_id);
 CREATE INDEX idx_bugs_project ON bugs(project_id);
 CREATE INDEX idx_sessions_user ON sessions(user_id);
+`, `
+CREATE TABLE deployments (
+  id INTEGER PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  branch_name TEXT NOT NULL,
+  base_branch TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  developer TEXT NOT NULL DEFAULT '',
+  branch_type TEXT NOT NULL DEFAULT 'feature',
+  staging_deploy TEXT NOT NULL DEFAULT 'pending',
+  staging_test TEXT NOT NULL DEFAULT 'pending',
+  live_deploy TEXT NOT NULL DEFAULT 'pending',
+  live_test TEXT NOT NULL DEFAULT 'pending',
+  final_status TEXT NOT NULL DEFAULT 'pending',
+  staging_result TEXT NOT NULL DEFAULT '',
+  live_result TEXT NOT NULL DEFAULT '',
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX idx_deployments_project ON deployments(project_id);
+CREATE TABLE project_members_v2 (
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('admin','editor','tester','viewer')),
+  PRIMARY KEY (project_id, user_id)
+);
+INSERT INTO project_members_v2 (project_id, user_id, role) SELECT project_id, user_id, role FROM project_members;
+DROP TABLE project_members;
+ALTER TABLE project_members_v2 RENAME TO project_members;
 `]
 
 export function openDb(file = process.env.DATABASE_FILE || './data/qa-hub.db') {

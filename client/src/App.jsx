@@ -11,6 +11,7 @@ import Rounds from './pages/Rounds.jsx'
 import Round from './pages/Round.jsx'
 import Tasks from './pages/Tasks.jsx'
 import Bugs from './pages/Bugs.jsx'
+import Deployments from './pages/Deployments.jsx'
 import Settings from './pages/Settings.jsx'
 import Users from './pages/Users.jsx'
 import Profile from './pages/Profile.jsx'
@@ -64,6 +65,7 @@ function Shell() {
             <Route path="rounds/:rid" element={<Round />} />
             <Route path="tasks" element={<Tasks />} />
             <Route path="bugs" element={<Bugs />} />
+            <Route path="deployments" element={<Deployments />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/" />} />

@@ -62,6 +62,10 @@ input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--line)
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .check{display:flex;gap:8px;align-items:center;margin:6px 0 12px}
 .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.deploy-table{border:0;border-radius:0;min-width:1100px}
+.deploy-table th,.deploy-table td{white-space:nowrap}
+.deploy-table td:nth-child(4){white-space:normal;min-width:180px}
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:14px}
 th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--th);font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
 tr.dim td{opacity:.55}
