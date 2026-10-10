@@ -10,7 +10,7 @@ export default function Rounds() {
   return (
     <div>
       <div className="page-head">
-        <p className="muted">A test round is one full pass over every task, for example one per release. Starting a new round creates <b>all tasks again</b>, all set to "Not tested". Earlier rounds keep their results.</p>
+        <p className="muted">Each Saturday, start a new round. That copies <b>every task again</b>, all set to "Not tested": public pages by section, and each CMS module by section. Click Pass, Fail, Blocked or N/A on each task, add a note, and report a bug when something is wrong. Finish sends one report, with those notes and bugs, to the addresses in Settings. Earlier rounds keep their results.</p>
         {canTest && <button className="primary" onClick={() => setOpen(true)}>Start new test round (all tasks again)</button>}
       </div>
       <Loading state={st} />

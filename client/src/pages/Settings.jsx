@@ -40,7 +40,7 @@ export default function Settings() {
         <Field label="Name"><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></Field>
         <Field label="Description"><input value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
         <Field label="Website address (automatic checks)"><input value={f.baseUrl} onChange={(e) => setF({ ...f, baseUrl: e.target.value })} placeholder="https://" /></Field>
-        <Field label="Who gets the final report by email" hint="Separate addresses with commas. SMTP settings are in the server's .env file."><input value={f.recipients} onChange={(e) => setF({ ...f, recipients: e.target.value })} /></Field>
+        <Field label="Who gets the final report by email" hint="Separate addresses with commas. For the Saturday report use mk@abovestandard.dk, mg@abovestandard.dk, pm@abovestandard.dk. SMTP settings are in the server's .env file."><input value={f.recipients} onChange={(e) => setF({ ...f, recipients: e.target.value })} placeholder="mk@abovestandard.dk, mg@abovestandard.dk, pm@abovestandard.dk" /></Field>
         <button className="primary">Save details</button>
       </form>
 

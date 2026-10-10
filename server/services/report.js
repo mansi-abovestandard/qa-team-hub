@@ -5,6 +5,7 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 const PRI_RANK = { high: 0, medium: 1, low: 2 }
 const SEV_RANK = { critical: 0, major: 1, minor: 2, trivial: 3 }
 const OPEN_BUG = (b) => ['open', 'in_progress', 'fixed'].includes(b.status) // fixed but not verified is still open for release purposes
+const bugNotes = (b) => [b.actual, b.description].filter(Boolean).join(' — ')
 
 export function computeStats(run, bugs, previousRun = null) {
   const items = run.itemsSnapshot
@@ -114,7 +115,7 @@ export function reportText(run, bugs, previousRun) {
   }
   if (s.openBugs.length) {
     L.push(''); L.push(`OPEN BUGS (${s.openBugs.length})`)
-    s.openBugs.slice(0, 20).forEach((b) => L.push(`  ${b.id} [${b.severity}] ${b.title} - ${b.status}${b.assignee ? ` - ${b.assignee}` : ''}`))
+    s.openBugs.slice(0, 20).forEach((b) => L.push(`  ${b.id} [${b.severity}] ${b.title} - ${b.status}${b.assignee ? ` - ${b.assignee}` : ''}${bugNotes(b) ? `\n      ${bugNotes(b).replace(/\s+/g, ' ').slice(0, 240)}` : ''}`))
   }
   if (s.untestedHigh.length) { L.push(''); L.push(`HIGH-PRIORITY NOT TESTED (${s.untestedHigh.length})`); s.untestedHigh.slice(0, 15).forEach((u) => L.push(`  - ${u.id} ${u.title}`)) }
   return L.join('\n')
@@ -127,7 +128,7 @@ export function reportHtml(run, bugs, previousRun) {
   const areaRows = Object.entries(s.byArea).map(([a, v]) => [esc(a), v.total, v['Pass'], v['Fail'], v['Blocked'], v['Not tested'], v['Not applicable']])
   const failRows = s.failed.map((f) => [esc(f.id), esc(f.priority), esc(f.group), esc(f.title), esc(f.notes), esc(f.bugIds.join(', '))])
   const blockedRows = s.blocked.map((f) => [esc(f.id), esc(f.priority), esc(f.group), esc(f.title), esc(f.notes)])
-  const bugRows = s.openBugs.map((b) => [esc(b.id), esc(b.severity), esc(b.status), esc(b.title), esc(b.itemId), esc(b.assignee)])
+  const bugRows = s.openBugs.map((b) => [esc(b.id), esc(b.severity), esc(b.status), esc(b.title), esc(b.itemId), esc(bugNotes(b)), esc(b.assignee)])
   const untested = s.untestedHigh.map((u) => [esc(u.id), esc(u.group), esc(u.title)])
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>QA report - ${esc(run.name)}</title>
 <style>
@@ -156,7 +157,7 @@ ${s.regressions.length ? `<h2>Regressions (passed last run, failing now)</h2>${t
     esc([...g.Fail, ...g.Blocked].slice(0, 8).map((f) => `${f.status === 'Fail' ? 'FAIL' : 'BLOCKED'} ${f.id} ${f.title}${f.notes ? ' - ' + f.notes.slice(0, 120) : ''}`).join('\n')).replace(/\n/g, '<br>')]))}
 <h2>Failed checks (${s.failed.length})</h2>${table(['ID', 'Priority', 'Where', 'Check', 'Notes', 'Bugs'], failRows)}
 <h2>Blocked checks (${s.blocked.length})</h2>${table(['ID', 'Priority', 'Where', 'Check', 'Notes'], blockedRows)}
-<h2>Open bugs (${s.openBugs.length})</h2>${table(['Bug', 'Severity', 'Status', 'Title', 'Check', 'Assignee'], bugRows)}
+<h2>Open bugs (${s.openBugs.length})</h2>${table(['Bug', 'Severity', 'Status', 'Title', 'Check', 'Notes', 'Assignee'], bugRows)}
 <h2>High-priority checks not tested (${s.untestedHigh.length})</h2>${table(['ID', 'Where', 'Check'], untested)}
 <p class="meta">Verdict rules: NO-GO if any high-priority check failed, is blocked or untested, or a critical/major bug is open. GO WITH RISKS if only lower-priority issues remain. Otherwise GO.</p>
 </body></html>`

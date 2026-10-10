@@ -102,7 +102,7 @@ test('bugs: created from a check, linked to the round, status flow and history',
 
 test('report lists problems per page; finish closes the round; email needs settings', async () => {
   await tester('PUT', `/api/runs/${rid}/items/Q-01`, { status: 'Fail', notes: 'Hero missing on phone' })
-  const [c, html] = await viewer('GET', `/api/runs/${rid}/report.html`); assert.equal(c, 200); assert.match(html, /Pages and modules with problems/)
+  const [c, html] = await viewer('GET', `/api/runs/${rid}/report.html`); assert.equal(c, 200); assert.match(html, /Pages and modules with problems/); assert.match(html, /blank/)
   let [c2, txt] = await viewer('GET', `/api/runs/${rid}/report.txt`); assert.match(txt, /NO-GO/)
   const saved = { ...process.env }; for (const k of ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS']) delete process.env[k]
   let [c3, d] = await tester('GET', `/api/runs/${rid}/mail`); assert.deepEqual(d.to, ['pm@x.dk', 'mg@x.dk']); assert.equal(d.ready, false)

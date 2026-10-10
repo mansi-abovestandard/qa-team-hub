@@ -44,11 +44,18 @@ table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(-
 th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#f1f5fb;font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
 tr.dim td{opacity:.55}
 .group{margin:18px 0 6px;font-weight:700;color:var(--brand)}
-.item{background:#fff;border:1px solid var(--line);border-left:5px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:78px 1fr 160px;gap:8px 12px}
+.item{background:#fff;border:1px solid var(--line);border-left:5px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:78px 1fr auto;gap:8px 12px;align-items:start}
 .item.s-Pass{border-left-color:var(--go)}.item.s-Fail{border-left-color:var(--nogo)}.item.s-Blocked{border-left-color:var(--risk)}.item.s-Notapplicable{border-left-color:#aaa;opacity:.75}
 .item .code{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--muted)}
 .item .title{font-weight:600}.item .more{color:var(--muted);font-size:13px;margin-top:2px}.item .more b{color:var(--text)}
-.item .notes{width:100%;margin:8px 0;font-size:13px}.item select{align-self:start}
+.item .notes{width:100%;margin:8px 0;font-size:13px}
+.status-btns{display:flex;flex-direction:column;gap:4px}
+.status-btns button{min-width:96px;text-align:center}
+.status-btns button.on:disabled{opacity:1;cursor:default}
+.status-btns button.on.Pass{background:var(--go);border-color:var(--go);color:#fff}
+.status-btns button.on.Fail{background:var(--nogo);border-color:var(--nogo);color:#fff}
+.status-btns button.on.Blocked{background:var(--risk);border-color:var(--risk);color:#fff}
+.status-btns button.on.Nottested,.status-btns button.on.Notapplicable{background:#5d6b7e;border-color:#5d6b7e;color:#fff}
 .chip{display:inline-block;font-size:11px;padding:1px 8px;border-radius:10px;border:1px solid var(--line);margin-left:6px;color:var(--muted)}
 .chip.high{background:#fde8e8;color:var(--nogo);border-color:#f5c2c2}.chip.auto{background:#e6f0ff;color:#1f4fb4;border-color:#c5d8ff}
 .sev{font-weight:700}.sev.critical,.sev.major{color:var(--nogo)}.sev.minor{color:var(--risk)}

@@ -112,8 +112,8 @@ function Item({ it, r, locked, onSet, onBug }) {
       <div className="code">{it.id}</div>
       <div className="main">
         <div className="title">{it.title} <span className={`chip ${it.priority}`}>{it.priority}</span>{r.source === 'auto' && <span className="chip auto">set automatically</span>}</div>
-        {it.steps && <div className="more"><b>How: </b>{it.steps}</div>}
-        {it.expected && <div className="more"><b>You pass if: </b>{it.expected}</div>}
+        <div className="more"><b>What to test: </b>{it.steps || <span className="muted">Not written yet</span>}</div>
+        <div className="more"><b>Expected result: </b>{it.expected || <span className="muted">Not written yet</span>}</div>
         {it.when && <div className="more"><b>When it appears: </b>{it.when}</div>}
         {it.ifEmpty && <div className="more"><b>If empty / loading: </b>{it.ifEmpty}</div>}
         <textarea rows={1} className="notes" placeholder="Notes: what you saw, browser, device" value={notes} disabled={locked} onChange={(e) => onNotes(e.target.value)} />
@@ -123,9 +123,13 @@ function Item({ it, r, locked, onSet, onBug }) {
           {r.tester && r.source !== 'auto' && <span className="muted small">by {r.tester}</span>}
         </div>
       </div>
-      <select value={r.status} disabled={locked} onChange={(e) => onSet(it.id, { status: e.target.value })} aria-label={`Status for ${it.id}`}>
-        {STATUSES.map((s) => <option key={s}>{s}</option>)}
-      </select>
+      <div className="status-btns" role="group" aria-label={`Status for ${it.id}`}>
+        {STATUSES.map((s) => (
+          <button key={s} type="button" className={`small ${r.status === s ? `on ${s.replace(/ /g, '')}` : ''}`} disabled={locked || r.status === s} onClick={() => onSet(it.id, { status: s })}>
+            {s === 'Not applicable' ? 'N/A' : s}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

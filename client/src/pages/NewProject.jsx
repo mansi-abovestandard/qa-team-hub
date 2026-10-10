@@ -22,7 +22,7 @@ export default function NewProject() {
       <Field label="Project name *"><input value={f.name} onChange={set('name')} required autoFocus /></Field>
       <Field label="Description"><input value={f.description} onChange={set('description')} /></Field>
       <Field label="Website address" hint="Used by the automatic checks, e.g. https://staging.example.dk"><input value={f.baseUrl} onChange={set('baseUrl')} placeholder="https://" /></Field>
-      <Field label="Who gets the final report by email" hint="Separate several addresses with commas"><input value={f.recipients} onChange={set('recipients')} placeholder="pm@abovestandard.dk, mg@abovestandard.dk" /></Field>
+      <Field label="Who gets the final report by email" hint="Separate several addresses with commas"><input value={f.recipients} onChange={set('recipients')} placeholder="mk@abovestandard.dk, mg@abovestandard.dk, pm@abovestandard.dk" /></Field>
       <Field label="Start with" hint="You can add, change and remove tasks afterwards.">
         <select value={f.templateId} onChange={set('templateId')}>
           <option value="">Nothing (add tasks myself)</option>

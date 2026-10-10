@@ -7,11 +7,12 @@ export default function Tasks() {
   const { pid } = useParams(); const { canAdmin } = useOutletContext()
   const toast = useToast()
   const st = useAsync(() => get(`/api/projects/${pid}/tasks`), [pid])
-  const [q, setQ] = useState(''); const [area, setArea] = useState('')
+  const [q, setQ] = useState(''); const [area, setArea] = useState(''); const [group, setGroup] = useState('')
   const [edit, setEdit] = useState(null); const [imp, setImp] = useState(false)
   const tasks = st.data || []
   const areas = useMemo(() => [...new Set(tasks.map((t) => t.area))], [tasks])
-  const list = tasks.filter((t) => (!area || t.area === area) && (!q || `${t.code} ${t.title} ${t.group}`.toLowerCase().includes(q.toLowerCase())))
+  const groups = useMemo(() => [...new Set(tasks.filter((t) => !area || t.area === area).map((t) => t.group))], [tasks, area])
+  const list = tasks.filter((t) => (!area || t.area === area) && (!group || t.group === group) && (!q || `${t.code} ${t.title} ${t.group} ${t.steps} ${t.expected}`.toLowerCase().includes(q.toLowerCase())))
   const remove = async (t) => {
     if (!window.confirm(`Remove "${t.title}" from the checklist?\nOld test rounds keep their copy.`)) return
     try { await del(`/api/tasks/${t.id}`); toast('Task removed', 'ok'); st.reload() } catch (x) { toast(x.message, 'error') }
@@ -19,7 +20,7 @@ export default function Tasks() {
   return (
     <div>
       <div className="page-head">
-        <p className="muted">These tasks are copied into every new test round. Changes here apply to the <b>next</b> round; finished rounds keep their own copy.</p>
+        <p className="muted">Each task shows what to test and the expected result. Public website tasks are grouped by page and section. CMS tasks are grouped by module and section. A new module is added with Import CSV; existing tasks stay. Changes here apply to the <b>next</b> round; finished rounds keep their own copy.</p>
         {canAdmin && <div className="row gap">
           <button className="primary" onClick={() => setEdit({})}>Add a task</button>
           <button className="ghost" onClick={() => setImp(true)}>Import CSV</button>
@@ -27,26 +28,43 @@ export default function Tasks() {
         </div>}
       </div>
       <div className="filters">
-        <input type="search" placeholder="Search code, task or page…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select value={area} onChange={(e) => setArea(e.target.value)}><option value="">All areas</option>{areas.map((a) => <option key={a}>{a}</option>)}</select>
+        <input type="search" placeholder="Search code, task, page or expected result…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select value={area} onChange={(e) => { setArea(e.target.value); setGroup('') }}><option value="">All areas</option>{areas.map((a) => <option key={a}>{a}</option>)}</select>
+        <select value={group} onChange={(e) => setGroup(e.target.value)}><option value="">All pages / modules</option>{groups.map((g) => <option key={g}>{g}</option>)}</select>
         <span className="muted">{list.length} of {tasks.length} tasks</span>
       </div>
       <Loading state={st} />
       {st.data && tasks.length === 0 && <div className="empty">No tasks yet. {canAdmin ? 'Add one or import a CSV.' : ''}</div>}
-      {tasks.length > 0 && (
-        <table>
-          <thead><tr><th>Code</th><th>Area</th><th>Page / module</th><th>Task</th><th>Priority</th>{canAdmin && <th />}</tr></thead>
-          <tbody>
-            {list.slice(0, 1000).map((t) => (
-              <tr key={t.id}><td className="mono">{t.code}</td><td>{t.area}</td><td>{t.group}</td><td>{t.title}{t.auto && <span className="chip auto">automatic</span>}</td><td><span className={`chip ${t.priority}`}>{t.priority}</span></td>
-                {canAdmin && <td className="nowrap"><button className="ghost small" onClick={() => setEdit(t)}>Edit</button> <button className="ghost small danger" onClick={() => remove(t)}>Remove</button></td>}</tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      {list.length > 1000 && <div className="muted">Showing the first 1000.</div>}
+      {tasks.length > 0 && <TaskGroups tasks={list.slice(0, 1000)} canAdmin={canAdmin} onEdit={setEdit} onRemove={remove} />}
+      {list.length > 1000 && <div className="muted">Showing the first 1000. Use the filters to narrow down.</div>}
       {edit && <TaskModal pid={pid} task={edit} areas={areas} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); st.reload() }} />}
       {imp && <ImportModal pid={pid} onClose={() => setImp(false)} onDone={() => { setImp(false); st.reload() }} />}
+    </div>
+  )
+}
+
+function TaskGroups({ tasks, canAdmin, onEdit, onRemove }) {
+  let last = null
+  return (
+    <div>
+      {tasks.map((t) => {
+        const head = `${t.area} — ${t.group}`
+        const showHead = head !== last; last = head
+        return (
+          <div key={t.id}>
+            {showHead && <div className="group">{head}</div>}
+            <div className="item">
+              <div className="code">{t.code}</div>
+              <div className="main">
+                <div className="title">{t.title} <span className={`chip ${t.priority}`}>{t.priority}</span>{t.auto && <span className="chip auto">automatic</span>}</div>
+                <div className="more"><b>What to test: </b>{t.steps || <span>Not written yet</span>}</div>
+                <div className="more"><b>Expected result: </b>{t.expected || <span>Not written yet</span>}</div>
+              </div>
+              {canAdmin && <div className="row gap"><button className="ghost small" onClick={() => onEdit(t)}>Edit</button><button className="ghost small danger" onClick={() => onRemove(t)}>Remove</button></div>}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -71,8 +89,8 @@ function TaskModal({ pid, task, areas, onClose, onSaved }) {
           <Field label="Page or module" hint="e.g. Home page - /"><input value={f.group} onChange={set('group')} /></Field>
         </div>
         <datalist id="areas">{areas.map((a) => <option key={a} value={a} />)}</datalist>
-        <Field label="How to test (steps)"><textarea rows={3} value={f.steps} onChange={set('steps')} /></Field>
-        <Field label="You pass if…"><textarea rows={3} value={f.expected} onChange={set('expected')} /></Field>
+        <Field label="What to test"><textarea rows={3} value={f.steps} onChange={set('steps')} placeholder="Open the page or CMS section and do this…" /></Field>
+        <Field label="Expected result"><textarea rows={3} value={f.expected} onChange={set('expected')} placeholder="What you should see when it is correct" /></Field>
         <div className="two">
           <Field label="Priority"><select value={f.priority} onChange={set('priority')}><option>high</option><option>medium</option><option>low</option></select></Field>
           {!task.id && <Field label="Code (optional)" hint="Leave empty for an automatic code"><input value={f.code} onChange={set('code')} /></Field>}
@@ -94,9 +112,9 @@ function ImportModal({ pid, onClose, onDone }) {
   return (
     <Modal title="Import tasks from CSV" onClose={onClose} wide>
       <form onSubmit={submit}>
-        <p className="muted">First row must be the column names. Needed: <b>title</b>. Optional: code, area, group (page or module), steps, expected, priority (high / medium / low). Existing codes are skipped.</p>
+        <p className="muted">Adds the new page or CMS module <b>on top of the tasks already in this project</b>. A row whose code already exists is skipped, so the old checklist stays. First row must be the column names. Needed: <b>title</b>, <b>steps</b> (what to test) and <b>expected</b> (expected result). Also use code, area, group (page or module) and priority (high / medium / low).</p>
         <input type="file" accept=".csv,text/csv" onChange={readFile} />
-        <Field label="…or paste CSV here"><textarea rows={8} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={'code,area,group,title,expected,priority\nA-1,Admin,Orders,Create an order,Order is saved,high'} /></Field>
+        <Field label="…or paste CSV here"><textarea rows={8} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={'code,area,group,title,steps,expected,priority\nCMS-1,CMS admin,New module - Section,Save the form,Open the section and save,The form is stored,high'} /></Field>
         <div className="actions"><button type="button" className="ghost" onClick={onClose}>Cancel</button><button className="primary" disabled={!csv.trim()}>Import</button></div>
       </form>
     </Modal>

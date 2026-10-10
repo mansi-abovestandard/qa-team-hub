@@ -1,0 +1,10 @@
+---
+description: QA Team Hub project context
+alwaysApply: true
+---
+
+Read HANDOFF.md first for architecture, API list and roles.
+- Backend: Express + node:sqlite, raw SQL, no ORM; routes in server/app.js, logic in server/services/.
+- Frontend: React + Vite in client/src; run `npm run build` after client changes (Express serves client/dist).
+- Run `npm test` after backend changes. Never send real email without explicit user approval.
+- Task edits must only affect future rounds; closed rounds are immutable.
