@@ -1,18 +1,36 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { del, get, patch, post } from '../api.js'
 import { Field, Loading, Modal, useAsync, useToast } from '../ui.jsx'
+
+function groupSections(tasks) {
+  const map = new Map()
+  for (const t of tasks) {
+    const key = `${t.area}\0${t.group}`
+    if (!map.has(key)) map.set(key, { key, area: t.area, group: t.group, items: [] })
+    map.get(key).items.push(t)
+  }
+  return [...map.values()]
+}
 
 export default function Tasks() {
   const { pid } = useParams(); const { canAdmin } = useOutletContext()
   const toast = useToast()
   const st = useAsync(() => get(`/api/projects/${pid}/tasks`), [pid])
-  const [q, setQ] = useState(''); const [area, setArea] = useState(''); const [group, setGroup] = useState('')
+  const [q, setQ] = useState(''); const [area, setArea] = useState('')
+  const [sectionKey, setSectionKey] = useState(''); const [openId, setOpenId] = useState(null)
   const [edit, setEdit] = useState(null); const [imp, setImp] = useState(false)
+  const pane = useRef(null)
   const tasks = st.data || []
   const areas = useMemo(() => [...new Set(tasks.map((t) => t.area))], [tasks])
-  const groups = useMemo(() => [...new Set(tasks.filter((t) => !area || t.area === area).map((t) => t.group))], [tasks, area])
-  const list = tasks.filter((t) => (!area || t.area === area) && (!group || t.group === group) && (!q || `${t.code} ${t.title} ${t.group} ${t.steps} ${t.expected}`.toLowerCase().includes(q.toLowerCase())))
+  const list = tasks.filter((t) => (!area || t.area === area) && (!q || `${t.code} ${t.title} ${t.group} ${t.steps} ${t.expected}`.toLowerCase().includes(q.toLowerCase())))
+  const sections = useMemo(() => groupSections(list), [list])
+  useEffect(() => {
+    if (!sections.some((s) => s.key === sectionKey)) setSectionKey(sections[0]?.key || '')
+  }, [sections, sectionKey])
+  const current = sections.find((s) => s.key === sectionKey) || sections[0]
+  const index = sections.findIndex((s) => s.key === current?.key)
+  const pick = (key) => { setSectionKey(key); setOpenId(null); pane.current?.scrollIntoView({ block: 'nearest' }) }
   const remove = async (t) => {
     if (!window.confirm(`Remove "${t.title}" from the checklist?\nOld test rounds keep their copy.`)) return
     try { await del(`/api/tasks/${t.id}`); toast('Task removed', 'ok'); st.reload() } catch (x) { toast(x.message, 'error') }
@@ -20,7 +38,7 @@ export default function Tasks() {
   return (
     <div>
       <div className="page-head">
-        <p className="muted">Each task shows what to test and the expected result. Public website tasks are grouped by page and section. CMS tasks are grouped by module and section. A new module is added with Import CSV; existing tasks stay. Changes here apply to the <b>next</b> round; finished rounds keep their own copy.</p>
+        <p className="muted">Pick a page or module on the left. Open a row to see what to test and the expected result. Import CSV adds a new module and leaves the existing tasks. Changes apply to the next round.</p>
         {canAdmin && <div className="row gap">
           <button className="primary" onClick={() => setEdit({})}>Add a task</button>
           <button className="ghost" onClick={() => setImp(true)}>Import CSV</button>
@@ -29,42 +47,69 @@ export default function Tasks() {
       </div>
       <div className="filters">
         <input type="search" placeholder="Search code, task, page or expected result…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select value={area} onChange={(e) => { setArea(e.target.value); setGroup('') }}><option value="">All areas</option>{areas.map((a) => <option key={a}>{a}</option>)}</select>
-        <select value={group} onChange={(e) => setGroup(e.target.value)}><option value="">All pages / modules</option>{groups.map((g) => <option key={g}>{g}</option>)}</select>
-        <span className="muted">{list.length} of {tasks.length} tasks</span>
+        <select value={area} onChange={(e) => setArea(e.target.value)}><option value="">All areas</option>{areas.map((a) => <option key={a}>{a}</option>)}</select>
+        <span className="muted">{list.length} of {tasks.length} tasks · {sections.length} pages / modules</span>
       </div>
       <Loading state={st} />
       {st.data && tasks.length === 0 && <div className="empty">No tasks yet. {canAdmin ? 'Add one or import a CSV.' : ''}</div>}
-      {tasks.length > 0 && <TaskGroups tasks={list.slice(0, 1000)} canAdmin={canAdmin} onEdit={setEdit} onRemove={remove} />}
-      {list.length > 1000 && <div className="muted">Showing the first 1000. Use the filters to narrow down.</div>}
+      {tasks.length > 0 && sections.length === 0 && <div className="empty">No tasks match the search.</div>}
+      {sections.length > 0 && (
+        <div className="round-work">
+          <nav className="section-nav" aria-label="Pages and modules">
+            {sections.map((s, i) => {
+              const showArea = i === 0 || sections[i - 1].area !== s.area
+              return (
+                <div key={s.key}>
+                  {showArea && <div className="section-area">{s.area}</div>}
+                  <button type="button" className={s.key === current.key ? 'on' : ''} onClick={() => pick(s.key)}>
+                    <span className="g">{s.group}</span>
+                    <span className="n">{s.items.length}</span>
+                  </button>
+                </div>
+              )
+            })}
+          </nav>
+          <div ref={pane}>
+            <div className="row between section-head">
+              <div><h3>{current.group}</h3><div className="muted small">{current.area} · {current.items.length} tasks</div></div>
+              <div className="row gap">
+                <button className="ghost small" disabled={index <= 0} onClick={() => pick(sections[index - 1].key)}>Previous</button>
+                <button className="ghost small" disabled={index >= sections.length - 1} onClick={() => pick(sections[index + 1].key)}>Next</button>
+              </div>
+            </div>
+            <div className="task-panel">
+              {current.items.map((t) => (
+                <TaskRow key={t.id} task={t} open={openId === t.id} onToggle={() => setOpenId(openId === t.id ? null : t.id)} canAdmin={canAdmin} onEdit={setEdit} onRemove={remove} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {edit && <TaskModal pid={pid} task={edit} areas={areas} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); st.reload() }} />}
       {imp && <ImportModal pid={pid} onClose={() => setImp(false)} onDone={() => { setImp(false); st.reload() }} />}
     </div>
   )
 }
 
-function TaskGroups({ tasks, canAdmin, onEdit, onRemove }) {
-  let last = null
+function TaskRow({ task, open, onToggle, canAdmin, onEdit, onRemove }) {
   return (
-    <div>
-      {tasks.map((t) => {
-        const head = `${t.area} — ${t.group}`
-        const showHead = head !== last; last = head
-        return (
-          <div key={t.id}>
-            {showHead && <div className="group">{head}</div>}
-            <div className="item">
-              <div className="code">{t.code}</div>
-              <div className="main">
-                <div className="title">{t.title} <span className={`chip ${t.priority}`}>{t.priority}</span>{t.auto && <span className="chip auto">automatic</span>}</div>
-                <div className="more"><b>What to test: </b>{t.steps || <span>Not written yet</span>}</div>
-                <div className="more"><b>Expected result: </b>{t.expected || <span>Not written yet</span>}</div>
-              </div>
-              {canAdmin && <div className="row gap"><button className="ghost small" onClick={() => onEdit(t)}>Edit</button><button className="ghost small danger" onClick={() => onRemove(t)}>Remove</button></div>}
-            </div>
-          </div>
-        )
-      })}
+    <div className={`task${open ? ' open' : ''}`}>
+      <div className="task-row">
+        <button type="button" className="chev" aria-expanded={open} aria-label={`${open ? 'Hide' : 'Show'} details for ${task.code}`} onClick={onToggle}>{open ? '▾' : '▸'}</button>
+        <button type="button" className="task-title" onClick={onToggle}>
+          <span className="code">{task.code}</span>
+          <span className="title">{task.title}</span>
+          <span className={`chip ${task.priority}`}>{task.priority}</span>
+          {task.auto && <span className="chip auto">automatic</span>}
+        </button>
+      </div>
+      {open && (
+        <div className="task-detail">
+          <div className="more"><b>What to test: </b>{task.steps || <span>Not written yet</span>}</div>
+          <div className="more"><b>Expected result: </b>{task.expected || <span>Not written yet</span>}</div>
+          {canAdmin && <div className="row gap task-actions"><button className="ghost small" onClick={() => onEdit(task)}>Edit</button><button className="ghost small danger" onClick={() => onRemove(task)}>Remove</button></div>}
+        </div>
+      )}
     </div>
   )
 }

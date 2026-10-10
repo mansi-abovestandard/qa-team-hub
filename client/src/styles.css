@@ -897,6 +897,10 @@ tr.dim td {
   margin-top: 4px
 }
 
+.task-actions {
+  margin-top: 10px
+}
+
 .task-detail .more b {
   color: var(--text)
 }
