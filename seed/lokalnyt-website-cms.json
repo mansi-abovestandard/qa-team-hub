@@ -263,6 +263,33 @@
    "priority": "high"
   },
   {
+   "id": "Q-21",
+   "area": "Quick test",
+   "group": "Public website",
+   "title": "Like and dislike",
+   "steps": "On each main module that has Like and Dislike, try both.",
+   "expected": "Like and Dislike work; the chosen reaction is saved and shown.",
+   "priority": "high"
+  },
+  {
+   "id": "Q-22",
+   "area": "Quick test",
+   "group": "Public website",
+   "title": "News submission",
+   "steps": "Submit a news story on the public site while logged in, and again while logged out.",
+   "expected": "Logged-in and logged-out visitors get the right access; a valid story is saved.",
+   "priority": "high"
+  },
+  {
+   "id": "Q-23",
+   "area": "Quick test",
+   "group": "Public website",
+   "title": "Event submission",
+   "steps": "Submit an event on the public site while logged in, and again while logged out.",
+   "expected": "Logged-in and logged-out visitors get the right access; a valid event is saved.",
+   "priority": "high"
+  },
+  {
    "area": "Public website",
    "group": "Layout on every page (header, footer, pop-ups) - All pages",
    "title": "Header and main menu",
@@ -6019,123 +6046,6 @@
    "expected": "It appears after the cache refreshes (up to 24 hours).",
    "priority": "medium",
    "id": "E-017"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Health check",
-   "steps": "GET /api/health",
-   "expected": "Returns 200.",
-   "priority": "high",
-   "id": "B-001"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Articles for the public site",
-   "steps": "Open the public lists that read articles (home, /nyheder, calendar, near me)",
-   "expected": "Only published items; filters and paging work; fast response.",
-   "priority": "high",
-   "id": "B-002"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Login and sessions",
-   "steps": "Log in, log out, refresh the session, reset password, social login",
-   "expected": "Right status codes; tokens issued and invalidated; reset mail works.",
-   "priority": "high",
-   "id": "B-003"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Create, edit, delete from the CMS",
-   "steps": "Create, change and delete records in ads, offers, cars, houses, categories, tags, menus",
-   "expected": "Valid input is saved; invalid input is rejected; no access without login or with the wrong role.",
-   "priority": "high",
-   "id": "B-004"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Image upload and image delivery",
-   "steps": "Upload an image in the CMS and open its public image address",
-   "expected": "File stored; sizes generated; the image address works.",
-   "priority": "high",
-   "id": "B-005"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Newsletter, contact and event submit",
-   "steps": "Submit each form with valid and invalid data",
-   "expected": "Record is created; mail is sent; validation errors are clear.",
-   "priority": "high",
-   "id": "B-006"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Push notifications and nearby offers",
-   "steps": "Send a push to a test device; move into a geofence",
-   "expected": "Notification is received and opens the right content.",
-   "priority": "medium",
-   "id": "B-007"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Email sending (Zepto / Brevo)",
-   "steps": "Trigger newsletter, password reset and contact mail",
-   "expected": "Delivered with the right template and sender.",
-   "priority": "high",
-   "id": "B-008"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Company lookup (CVR)",
-   "steps": "Add a company by CVR number",
-   "expected": "Company data is fetched; duplicates are blocked; failure is handled.",
-   "priority": "medium",
-   "id": "B-009"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "AI features (Gemini)",
-   "steps": "Run rewrite, generate and image generation",
-   "expected": "Result is saved; time-outs and errors are handled; the original is kept.",
-   "priority": "medium",
-   "id": "B-010"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Background jobs (cron, workers)",
-   "steps": "Run the cron-once scripts and check Cron-logs",
-   "expected": "Jobs finish, are logged, and create no duplicates.",
-   "priority": "medium",
-   "id": "B-011"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Scrapers (TV2, Ritzau, RSS, events, jobs)",
-   "steps": "Run each once",
-   "expected": "New items imported without duplicates; thumbnails created.",
-   "priority": "medium",
-   "id": "B-012"
-  },
-  {
-   "area": "Background & API",
-   "group": "Background jobs, integrations and API",
-   "title": "Cleanup jobs",
-   "steps": "Run article and trash cleanup on test data",
-   "expected": "Only expired or trashed items are removed.",
-   "priority": "medium",
-   "id": "B-013"
   }
  ]
 }

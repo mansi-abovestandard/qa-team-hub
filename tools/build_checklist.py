@@ -173,6 +173,9 @@ QUICK = [
  ("Unpublish","Unpublish the article.","It disappears from the public site and lists.","CMS admin"),
  ("Upload media","Upload a jpg, an mp4 and a wrong file in Medier.","Valid files upload with previews; the wrong file is rejected.","CMS admin"),
  ("Menu and ads","Change a menu item and an ad in the CMS.","The public site shows the change (allow for cache).","CMS admin"),
+ ("Like and dislike","On each main module that has Like and Dislike, try both.","Like and Dislike work; the chosen reaction is saved and shown.","Public website"),
+ ("News submission","Submit a news story on the public site while logged in, and again while logged out.","Logged-in and logged-out visitors get the right access; a valid story is saved.","Public website"),
+ ("Event submission","Submit an event on the public site while logged in, and again while logged out.","Logged-in and logged-out visitors get the right access; a valid event is saved.","Public website"),
 ]
 for i, (t, st, ex, where) in enumerate(QUICK, 1):
     items.append(dict(id=f"Q-{i:02d}", area="Quick test", group=where, title=t, steps=st, expected=ex, priority="high"))
@@ -258,17 +261,14 @@ for page, what, steps, exp, pr in [
 ]:
     add("CMS admin", page, what, steps, exp, pr)
 
-# ---- background and API
-for t, st, ex, pr in P.BACKGROUND: add("Background & API", "Background jobs, integrations and API", t, st, ex, pr)
-
 # ---- ids
-counters = {"Public website": ("W", 0), "CMS admin": ("A", 0), "Every page": ("E", 0), "Background & API": ("B", 0)}
+counters = {"Public website": ("W", 0), "CMS admin": ("A", 0), "Every page": ("E", 0)}
 n = {k: 0 for k in counters}
 for it in items:
     if "id" in it: continue
     pre = counters[it["area"]][0]; n[it["area"]] += 1
     it["id"] = f"{pre}-{n[it['area']]:03d}"
-order = {"Automated checks": 0, "Quick test": 1, "Public website": 2, "CMS admin": 3, "Every page": 4, "Background & API": 5}
+order = {"Automated checks": 0, "Quick test": 1, "Public website": 2, "CMS admin": 3, "Every page": 4}
 items.sort(key=lambda i: (order[i["area"]], i["id"]))
 out = os.path.join(os.path.dirname(HERE), "seed", "full-checklist.json")
 json.dump({"version": 2, "generatedFrom": "Lokalnyt source code", "items": items}, open(out, "w", encoding="utf8"), ensure_ascii=False, indent=1)

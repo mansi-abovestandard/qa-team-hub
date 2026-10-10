@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { post } from '../api.js'
 import { Field } from '../ui.jsx'
+import { ThemeToggle } from '../theme.jsx'
 
 export default function Login({ needsSetup, onDone }) {
   const [f, setF] = useState({ name: '', email: '', password: '' })
@@ -13,6 +14,7 @@ export default function Login({ needsSetup, onDone }) {
   }
   return (
     <div className="login">
+      <div className="login-bar"><ThemeToggle /></div>
       <form className="card" onSubmit={submit}>
         <h1>QA Team Hub</h1>
         <p className="muted">{needsSetup ? 'First start: create the admin account for your team.' : 'Sign in to continue.'}</p>

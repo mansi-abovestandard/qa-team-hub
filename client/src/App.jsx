@@ -14,6 +14,7 @@ import Bugs from './pages/Bugs.jsx'
 import Settings from './pages/Settings.jsx'
 import Users from './pages/Users.jsx'
 import Profile from './pages/Profile.jsx'
+import { ThemeToggle } from './theme.jsx'
 
 export default function App() {
   const [auth, setAuth] = useState({ loading: true, user: null, needsSetup: false })
@@ -44,6 +45,7 @@ function Shell() {
         </nav>
         <span className="grow" />
         <span className="who">{user.name}{user.isAdmin ? ' (admin)' : ''}</span>
+        <ThemeToggle />
         <button className="ghost light" onClick={logout}>Sign out</button>
       </header>
       <main>

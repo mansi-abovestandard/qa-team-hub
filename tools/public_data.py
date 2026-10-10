@@ -276,18 +276,3 @@ EVERY = [
  ("Cookie banner","Open the site in a fresh private window; accept, then reset and reject.","Banner shows once; the choice is remembered; nothing tracks after Reject. It does not show on /cms.","high"),
  ("Fresh content","Change or publish something in the CMS and look at the public page.","It appears after the cache refreshes (up to 24 hours).","medium"),
 ]
-BACKGROUND = [
- ("Health check","GET /api/health","Returns 200.","high"),
- ("Articles for the public site","Open the public lists that read articles (home, /nyheder, calendar, near me)","Only published items; filters and paging work; fast response.","high"),
- ("Login and sessions","Log in, log out, refresh the session, reset password, social login","Right status codes; tokens issued and invalidated; reset mail works.","high"),
- ("Create, edit, delete from the CMS","Create, change and delete records in ads, offers, cars, houses, categories, tags, menus","Valid input is saved; invalid input is rejected; no access without login or with the wrong role.","high"),
- ("Image upload and image delivery","Upload an image in the CMS and open its public image address","File stored; sizes generated; the image address works.","high"),
- ("Newsletter, contact and event submit","Submit each form with valid and invalid data","Record is created; mail is sent; validation errors are clear.","high"),
- ("Push notifications and nearby offers","Send a push to a test device; move into a geofence","Notification is received and opens the right content.","medium"),
- ("Email sending (Zepto / Brevo)","Trigger newsletter, password reset and contact mail","Delivered with the right template and sender.","high"),
- ("Company lookup (CVR)","Add a company by CVR number","Company data is fetched; duplicates are blocked; failure is handled.","medium"),
- ("AI features (Gemini)","Run rewrite, generate and image generation","Result is saved; time-outs and errors are handled; the original is kept.","medium"),
- ("Background jobs (cron, workers)","Run the cron-once scripts and check Cron-logs","Jobs finish, are logged, and create no duplicates.","medium"),
- ("Scrapers (TV2, Ritzau, RSS, events, jobs)","Run each once","New items imported without duplicates; thumbnails created.","medium"),
- ("Cleanup jobs","Run article and trash cleanup on test data","Only expired or trashed items are removed.","medium"),
-]
